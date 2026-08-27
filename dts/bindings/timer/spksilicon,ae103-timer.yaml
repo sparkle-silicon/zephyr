@@ -1,0 +1,22 @@
+# Copyright (c) 2026 Sparkle Silicon Technology Corp., Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  SPK AE103 hardware timer
+
+  Four independent 16-bit down-counters at one register block. Each channel
+  occupies 0x14 bytes:
+
+    TLC  +0x00  load count     (16-bit, little-endian: +0 lo byte, +1 hi byte)
+    TCV  +0x04  current count  (16-bit, read-only)
+    TCR  +0x08  control        (bit0 = enable, bit1 = loop, bit2 = int-mask)
+    TEOI +0x0C  end-of-interrupt clear
+    TIS  +0x10  interrupt status (bit0)
+
+compatible: "spksilicon,ae103-timer"
+
+include: base.yaml
+
+properties:
+  reg:
+    required: true

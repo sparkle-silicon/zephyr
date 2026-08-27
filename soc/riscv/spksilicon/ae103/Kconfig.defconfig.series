@@ -1,0 +1,20 @@
+# Copyright (c) 2026 Sparkle Silicon Technology Corp., Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
+if SOC_SERIES_SPK_AE103X
+
+config SOC_SERIES
+	default "ae103"
+
+# EC core clock. TODO: confirm against SYSCTL PLL config (48MHz default).
+config SYS_CLOCK_HW_CYCLES_PER_SEC
+	default 48000000
+
+# INTC0 (64 sources) + INTC1 (40 sources).
+config NUM_IRQS
+	default 104
+
+config RISCV_SOC_INTERRUPT_INIT
+	default y
+
+endif # SOC_SERIES_SPK_AE103X

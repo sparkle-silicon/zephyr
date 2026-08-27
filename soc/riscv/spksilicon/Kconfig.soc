@@ -1,0 +1,4 @@
+# Copyright (c) 2026 Sparkle Silicon Technology Corp., Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
+source "soc/riscv/spksilicon/*/Kconfig.series"

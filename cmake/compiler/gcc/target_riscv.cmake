@@ -45,28 +45,47 @@ if(CONFIG_RISCV_ISA_EXT_C)
     string(CONCAT riscv_march ${riscv_march} "c")
 endif()
 
-if(CONFIG_RISCV_ISA_EXT_ZICSR)
-    string(CONCAT riscv_march ${riscv_march} "_zicsr")
+# Z* 扩展（zicsr/zifencei/zba/zbb/zbc/zbs）在 RISC-V ISA 20191213 规范中才被拆分为
+# 独立扩展。GCC < 12 隐含这些扩展，且不认识 "-march=..._zxxx" 的显式写法
+# （报 "unsupported ISA subset 'z'"）。因此仅在 GCC >= 12 时显式拼写；
+# 旧工具链（如 Nuclei GCC 9.2.0）靠隐含支持，语义等价。
+
+# Zephyr 的 cross-compile 工具链（ZEPHYR_TOOLCHAIN_VARIANT=cross-compile）跳过 CMake
+# 的编译器自动检测，导致 CMAKE_C_COMPILER_VERSION 为空。这里主动用 -dumpversion
+# 探测真实 GCC 版本，否则上面的 VERSION_GREATER_EQUAL 判断恒为 false，
+# 新工具链（GCC 12.2.0）也拼不出 _zicsr，csr 指令会报 unrecognized opcode。
+if(NOT CMAKE_C_COMPILER_VERSION)
+  execute_process(
+    COMMAND ${CMAKE_C_COMPILER} -dumpversion
+    OUTPUT_VARIABLE CMAKE_C_COMPILER_VERSION
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+  )
 endif()
 
-if(CONFIG_RISCV_ISA_EXT_ZIFENCEI)
-    string(CONCAT riscv_march ${riscv_march} "_zifencei")
-endif()
+if (CMAKE_C_COMPILER_VERSION VERSION_GREATER_EQUAL 12.0.0)
+  if(CONFIG_RISCV_ISA_EXT_ZICSR)
+      string(CONCAT riscv_march ${riscv_march} "_zicsr")
+  endif()
 
-if(CONFIG_RISCV_ISA_EXT_ZBA)
-    string(CONCAT riscv_march ${riscv_march} "_zba")
-endif()
+  if(CONFIG_RISCV_ISA_EXT_ZIFENCEI)
+      string(CONCAT riscv_march ${riscv_march} "_zifencei")
+  endif()
 
-if(CONFIG_RISCV_ISA_EXT_ZBB)
-    string(CONCAT riscv_march ${riscv_march} "_zbb")
-endif()
+  if(CONFIG_RISCV_ISA_EXT_ZBA)
+      string(CONCAT riscv_march ${riscv_march} "_zba")
+  endif()
 
-if(CONFIG_RISCV_ISA_EXT_ZBC)
-    string(CONCAT riscv_march ${riscv_march} "_zbc")
-endif()
+  if(CONFIG_RISCV_ISA_EXT_ZBB)
+      string(CONCAT riscv_march ${riscv_march} "_zbb")
+  endif()
 
-if(CONFIG_RISCV_ISA_EXT_ZBS)
-    string(CONCAT riscv_march ${riscv_march} "_zbs")
+  if(CONFIG_RISCV_ISA_EXT_ZBC)
+      string(CONCAT riscv_march ${riscv_march} "_zbc")
+  endif()
+
+  if(CONFIG_RISCV_ISA_EXT_ZBS)
+      string(CONCAT riscv_march ${riscv_march} "_zbs")
+  endif()
 endif()
 
 list(APPEND TOOLCHAIN_C_FLAGS -mabi=${riscv_mabi} -march=${riscv_march})

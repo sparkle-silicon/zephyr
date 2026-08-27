@@ -1,0 +1,66 @@
+/*
+ * Copyright (c) 2026 Sparkle Silicon Technology Corp., Ltd.
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/dts-v1/;
+
+#include <zephyr/dt-bindings/dt-util.h>
+
+/ {
+	#address-cells = <1>;
+	#size-cells = <1>;
+
+	cpus {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		cpu0: cpu@0 {
+			device_type = "cpu";
+			compatible = "riscv";
+			riscv,isa = "rv32ec";
+			reg = <0>;
+			status = "okay";
+
+			hlic0: interrupt-controller {
+				compatible = "riscv,cpu-intc";
+				#address-cells = <0>;
+				#interrupt-cells = <1>;
+				interrupt-controller;
+			};
+		};
+	};
+
+	soc {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		compatible = "simple-bus";
+		ranges;
+
+		/*
+		 * SRAM (DLM): 0x20000, 32 KiB.
+		 * TODO: peripheral register nodes (INTC0/INTC1, TIMER, UART, ...)
+		 *       are added incrementally as their drivers land.
+		 */
+		sram0: memory@20000 {
+			compatible = "mmio-sram";
+			reg = <0x20000 0x8000>;
+		};
+
+		/* SPI flash XIP window: 0x80000, 256 KiB. */
+		flash0: flash@80000 {
+			compatible = "soc-nv-flash";
+			reg = <0x80000 0x40000>;
+		};
+
+		/*
+		 * SPK hardware timer: 4 x 16-bit down-counters @ 0x1800.
+		 * 0x14 bytes per channel => 0x50 total.
+		 */
+		timer0: timer@1800 {
+			compatible = "spksilicon,ae103-timer";
+			reg = <0x1800 0x50>;
+			status = "okay";
+		};
+	};
+};

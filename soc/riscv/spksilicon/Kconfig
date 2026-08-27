@@ -1,0 +1,18 @@
+# Copyright (c) 2026 Sparkle Silicon Technology Corp., Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
+config SOC_FAMILY_SPKSILICON
+	bool
+	help
+	  Sparkle Silicon (longjingshi) embedded controller SoC family.
+	  Covers AE101/AE102, AE103 (AE201X), and AE203 product generations.
+
+if SOC_FAMILY_SPKSILICON
+
+config SOC_FAMILY
+	string
+	default "spksilicon"
+
+source "soc/riscv/spksilicon/*/Kconfig.soc"
+
+endif # SOC_FAMILY_SPKSILICON

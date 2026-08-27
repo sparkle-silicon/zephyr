@@ -1,0 +1,44 @@
+# Copyright (c) 2026 Sparkle Silicon Technology Corp., Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
+choice
+prompt "SPK AE103 implementation"
+depends on SOC_SERIES_SPK_AE103X
+
+config SOC_AE103_NTO
+	bool "SPK AE103 NTO (single silicon for all AE201X SKUs)"
+	select RISCV
+	select RISCV_PRIVILEGED
+	select ATOMIC_OPERATIONS_C
+	select INCLUDE_RESET_VECTOR
+	select RISCV_ISA_RV32E
+	select RISCV_ISA_EXT_C
+	select RISCV_ISA_EXT_ZICSR
+	select RISCV_ISA_EXT_ZIFENCEI
+	select RISCV_SOC_INTERRUPT_INIT
+	help
+	  SPK32AE013NTO silicon. ISA is rv32ec / ilp32e:
+	  - No M extension: multiply/divide done in software.
+	  - No A extension: atomics use gcc builtins (ATOMIC_OPERATIONS_BUILTIN).
+	  AE201E / AE201N / AE201X are derived via eFUSE and share this SoC symbol.
+
+endchoice
+
+if SOC_AE103_NTO
+
+config AE103_TIMER
+	bool "AE103 hardware timer driver"
+	default y
+	help
+	  Enable the AE103 hardware timer driver (4 x 16-bit down-counters).
+	  This is the reference driver template for every AE103 peripheral
+	  driver that follows (INTC, UART, GPIO, ...).
+
+config AE103_TIMER_INIT_PRIORITY
+	int "AE103 timer driver init priority"
+	default 50
+	depends on AE103_TIMER
+	help
+	  POST_KERNEL initialization priority of the AE103 timer driver.
+
+endif # SOC_AE103_NTO
