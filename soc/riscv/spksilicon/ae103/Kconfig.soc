@@ -17,7 +17,7 @@ config SOC_AE103_NTO
 	select RISCV_ISA_EXT_ZIFENCEI
 	select RISCV_SOC_INTERRUPT_INIT
 	help
-	  SPK32AE013NTO silicon. ISA is rv32ec / ilp32e:
+	  SPK32AE103NTO silicon. ISA is rv32ec / ilp32e:
 	  - No M extension: multiply/divide done in software.
 	  - No A extension: atomics use gcc builtins (ATOMIC_OPERATIONS_BUILTIN).
 	  AE201E / AE201N / AE201X are derived via eFUSE and share this SoC symbol.
