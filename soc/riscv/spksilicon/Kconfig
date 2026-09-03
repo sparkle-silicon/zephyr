@@ -13,6 +13,20 @@ config SOC_FAMILY
 	string
 	default "spksilicon"
 
+config NUCLEI_N100_SPECIAL
+	bool "Nuclei N100 core specialized (mtvec read-only) path"
+	default y
+	help
+	  Nuclei N100 内核（蜂鸟 E203 血统）为缩减面积将 mtvec 实现为只读
+	  寄存器（写被忽略），异常/中断入口由 mtvt(0x307) 向量表决定
+	  （向量表由 ROM 复位后 scatterload 到 RAM 0x30800，mtvt 固定指向）。
+
+	  这是 spksilicon 家族内所有基于 N100 内核的 AE 系列
+	  （AE101/AE102/AE103/AE201/AE203…）共享的内核级开关：
+	  使能后 common/vector.S 不写 mtvec（N100 特化路径）；关闭后走
+	  标准 RISC-V 路径，vector.S 写 mtvec 指向 _isr_wrapper。此开关
+	  同时控制 common/n100_csr.h 中的 N100 特化 CSR 访问封装。
+
 source "soc/riscv/spksilicon/*/Kconfig.soc"
 
 endif # SOC_FAMILY_SPKSILICON

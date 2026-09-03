@@ -1,0 +1,53 @@
+/*
+ * Copyright (c) 2026 Sparkle Silicon Technology Corp., Ltd.
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Nuclei N100 内核复位向量：__start。
+ *
+ * N100 为缩减面积将 mtvec 实现为只读寄存器（写被忽略），异常/中断入口由
+ * mtvt(0x307) 向量表决定（向量表由芯片 ROM 复位后 scatterload 到 RAM
+ * 0x30800，mtvt 固定指向）。
+ *
+ * 本文件是 spksilicon 家族内所有基于 N100 内核的 AE 系列
+ * （AE101/AE102/AE103/AE201/AE203…）共享的内核公共层代码，由
+ * CONFIG_NUCLEI_N100_SPECIAL 宏控切换：
+ *   - N100 特化：不写 mtvec（写了也无害但误导），依赖 ROM 拷入的向量表。
+ *   - 标准 RISC-V：写 mtvec 指向 zephyr 统一异常入口 _isr_wrapper，
+ *     与 zephyr 通用 riscv-privileged/vector.S 行为一致。
+ */
+
+#include <zephyr/toolchain.h>
+
+/* exports */
+GTEXT(__start)
+
+/* imports */
+GTEXT(__reset)
+GTEXT(_isr_wrapper)
+
+SECTION_FUNC(vectors, __start)
+#if defined(CONFIG_RISCV_GP)
+	/* Initialize global pointer */
+	.option push
+	.option norelax
+	la gp, __global_pointer$
+	.option pop
+#endif
+
+	.option norvc;
+
+#if defined(CONFIG_NUCLEI_N100_SPECIAL)
+	/*
+	 * N100 特化路径：mtvec 只读（写忽略）。trap 入口由 mtvt 向量表
+	 * （0x30800，ROM scatterload）决定，此处不写 mtvec。
+	 */
+#else
+	/*
+	 * 标准 RISC-V 路径：mtvec 指向 zephyr 统一异常入口 _isr_wrapper。
+	 */
+	la t0, _isr_wrapper
+	csrw mtvec, t0
+#endif /* CONFIG_NUCLEI_N100_SPECIAL */
+
+	/* Jump to __reset */
+	tail __reset

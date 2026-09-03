@@ -8,7 +8,6 @@ depends on SOC_SERIES_SPK_AE103X
 config SOC_AE103_NTO
 	bool "SPK AE103 NTO (single silicon for all AE201X SKUs)"
 	select RISCV
-	select RISCV_PRIVILEGED
 	select ATOMIC_OPERATIONS_C
 	select INCLUDE_RESET_VECTOR
 	select RISCV_ISA_RV32E
@@ -22,9 +21,42 @@ config SOC_AE103_NTO
 	  - No A extension: atomics use gcc builtins (ATOMIC_OPERATIONS_BUILTIN).
 	  AE201E / AE201N / AE201X are derived via eFUSE and share this SoC symbol.
 
+	  NOTE: 这里不 select RISCV_PRIVILEGED。N100 内核为缩减面积将 mtvec
+	  实现为只读寄存器（写被忽略），不能沿用通用 riscv-privileged/vector.S
+	  （其默认分支会写 mtvec）。自定义 vector.S / soc_irq.S / soc_common_irq.c
+	  已抽到家族级 common/ 内核公共层，由 NUCLEI_N100_SPECIAL 宏控切换
+	  标准/特化路径（所有 AE 系列共享）。
+
 endchoice
 
 if SOC_AE103_NTO
+
+choice AE103_BOOT_MODE
+	prompt "AE103 boot flow"
+	default AE103_BOOT_DEFAULT
+	help
+	  选择复位后（多 hart / 固件镜像）启动流程。由 ae103_boot.c 的
+	  ae103_boot_secondary_core() 读取并执行对应分支。
+
+config AE103_BOOT_DEFAULT
+	bool "Default single-image boot"
+	help
+	  单镜像启动：hart 0 为引导核，其余 hart 进入低功耗 wfi 等待
+	  （对应 zephyr 默认 boot_secondary_core 行为，但可被 AE103 特化）。
+
+config AE103_BOOT_DUAL
+	bool "Dual-image (A/B) boot"
+	help
+	  双镜像启动：依据 FlashInfo 的 A/B 标记选择主备镜像，加载失败
+	  回退到另一镜像。业务逻辑需在 ae103_boot.c 中补充。
+
+config AE103_BOOT_RECOVERY
+	bool "Backup/recovery boot"
+	help
+	  备份/恢复启动：主镜像损坏时从备份区恢复并启动。业务逻辑需在
+	  ae103_boot.c 中补充。
+
+endchoice
 
 config AE103_TIMER
 	bool "AE103 hardware timer driver"
