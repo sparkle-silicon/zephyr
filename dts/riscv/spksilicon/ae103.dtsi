@@ -62,5 +62,54 @@
 			reg = <0x1800 0x50>;
 			status = "okay";
 		};
+
+		/*
+		 * AE103 UART: 16550-compatible, 4 ports（手册地址映射表 §4.1）。
+		 *   UARTA/B  oversample 16x (16550 standard)
+		 *   UART0/1  oversample 8x  (non-standard, low-power variant)
+		 *
+		 * 波特率时钟 clock-frequency = 主频经两级分频（ROM/KERNEL/
+		 * KERNEL_UART.c UART_Init）：
+		 *   f_uart = CHIP_CLOCK_INT_HIGH / (SYSCTL_CLKDIV_OSC80M + 1)
+		 *                                   / (SYSCTL_CLKDIV_UART  + 1)
+		 * 默认配置：OSC80M 复位值 0x3（手册 5.11.41，即 80M/4）、
+		 * UART 分频复位值 0（软件未配置），故
+		 *   f_uart = 80M / 4 / 1 = 20 MHz（与 CPU 主频同频）。
+		 * 后续 SYSCTL 驱动落地若改分频，需同步本值或改驱动动态读寄存器。
+		 *
+		 * console 默认挂 UART0，对齐裸机固件 debug 口。寄存器块 0x20
+		 * 覆盖 0x00~0x1F（标准 16550 0x00~0x07 + AE103 扩展 USR@0x1F）。
+		 */
+		uarta: serial@5000 {
+			compatible = "spksilicon,ae103-uart";
+			reg = <0x5000 0x20>;
+			clock-frequency = <20000000>;
+			spksilicon,oversample-ratio = <16>;
+			status = "disabled";
+		};
+
+		uartb: serial@5400 {
+			compatible = "spksilicon,ae103-uart";
+			reg = <0x5400 0x20>;
+			clock-frequency = <20000000>;
+			spksilicon,oversample-ratio = <16>;
+			status = "disabled";
+		};
+
+		uart0: serial@5800 {
+			compatible = "spksilicon,ae103-uart";
+			reg = <0x5800 0x20>;
+			clock-frequency = <20000000>;
+			spksilicon,oversample-ratio = <8>;
+			status = "disabled";
+		};
+
+		uart1: serial@5c00 {
+			compatible = "spksilicon,ae103-uart";
+			reg = <0x5c00 0x20>;
+			clock-frequency = <20000000>;
+			spksilicon,oversample-ratio = <8>;
+			status = "disabled";
+		};
 	};
 };

@@ -1,0 +1,39 @@
+# Copyright (c) 2026 Sparkle Silicon Technology Corp., Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  SPK AE103 UART
+
+  16550-compatible UART with an AE103-specific baud-rate divider:
+  UART0~3 oversample 8x (non-standard), UARTA/B oversample 16x (standard).
+  The ratio is selected per-node via `spksilicon,oversample-ratio`.
+
+  Register map (8-bit access):
+    RBR/THR/DLL +0x00  (DLL when LCR.DLAB=1)
+    IER/DLH     +0x01  (DLH when LCR.DLAB=1)
+    IIR/FCR     +0x02
+    LCR         +0x03
+    MICR (MCR)  +0x04
+    LSR         +0x05
+    MSR         +0x06
+    USR         +0x1F  (AE103 extension)
+
+  Note: interrupt-driven mode (IER/IIR) is not wired yet — the AE103
+  INTC0/INTC1 interrupt controller driver has not landed. This driver is
+  poll-only for now; `interrupts` will be added together with INTC.
+
+compatible: "spksilicon,ae103-uart"
+
+include: [uart-controller.yaml]
+
+properties:
+  reg:
+    required: true
+
+  spksilicon,oversample-ratio:
+    type: int
+    required: true
+    enum: [8, 16]
+    description: |
+      Baud-rate oversample ratio. UART0~3 use 8x, UARTA/B use 16x.
+      Divisor = clock / (ratio * baud).

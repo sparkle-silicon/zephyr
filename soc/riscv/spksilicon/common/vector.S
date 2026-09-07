@@ -41,6 +41,11 @@ SECTION_FUNC(vectors, __start)
 	 * N100 特化路径：mtvec 只读（写忽略）。trap 入口由 mtvt 向量表
 	 * （0x30800，ROM scatterload）决定，此处不写 mtvec。
 	 */
+	#  la a0, (vector_base+0x80)//trap_base
+	#  la a1, 0x30880
+	#  lw t0, (a0)
+	#  sw t0, (a1)
+	 jal	ra,__scatterload_vector
 #else
 	/*
 	 * 标准 RISC-V 路径：mtvec 指向 zephyr 统一异常入口 _isr_wrapper。
@@ -51,3 +56,22 @@ SECTION_FUNC(vectors, __start)
 
 	/* Jump to __reset */
 	tail __reset
+/*
+ * _start：复位入口桩，落点 0x80084（FlashInfo.ReStart + FLASH_BASE_ADDR）。
+ * 直接跳 zephyr __start（vector.S，链接在 0x80200）接管启动。
+ */
+ #define IVT_BASE_ADDR 0x30800
+ #define IVT_BASE_SIZE 0x84
+.globl __scatterload_vector		/* 全局符号 _start 供链接器和其他代码调度用*/
+__scatterload_vector:
+	la a0, vector_base
+	la a1, IVT_BASE_ADDR
+	la a2, (IVT_BASE_ADDR+IVT_BASE_SIZE)
+1:
+	lw t0, (a0)
+	sw t0, (a1)
+	addi a0, a0, 4
+	addi a1, a1, 4
+	bltu a1, a2, 1b
+2:
+    ret

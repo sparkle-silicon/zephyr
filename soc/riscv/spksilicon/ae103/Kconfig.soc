@@ -58,6 +58,17 @@ config AE103_BOOT_RECOVERY
 
 endchoice
 
+config WDOG_INIT
+	bool "AE103 early watchdog init (before C domain)"
+	default n
+	help
+	  Call _WdogInit() from arch reset.S before z_prep_c — i.e. before BSS
+	  is zeroed and .data is copied into RAM. 用于在启动最早阶段喂狗/禁狗，
+	  防止 z_prep_c 之前看门狗超时复位。由 reset.S 的 #ifdef CONFIG_WDOG_INIT
+	  / call _WdogInit 调用点接入。
+
+	  ⚠️ 寄存器操作待芯片资料确认（WDT 中断号 = 19，SYSCTL@0x30400 为复位域）。
+
 config AE103_TIMER
 	bool "AE103 hardware timer driver"
 	default y
@@ -72,5 +83,24 @@ config AE103_TIMER_INIT_PRIORITY
 	depends on AE103_TIMER
 	help
 	  POST_KERNEL initialization priority of the AE103 timer driver.
+
+config AE103_UART
+	bool "AE103 UART driver (16550-compatible)"
+	default y
+	help
+	  Enable the AE103 UART driver. Six 16550-compatible ports:
+	  UARTA/B oversample 16x (standard), UART0~3 oversample 8x
+	  (non-standard). Poll-only for now; interrupt-driven mode lands
+	  together with the AE103 INTC driver. Init priority follows the
+	  standard CONFIG_SERIAL_INIT_PRIORITY (PRE_KERNEL_1), like ns16550.
+
+config AE103_SPI_FLASH
+	bool "AE103 external SPI NOR Flash driver"
+	default n
+	help
+	  Enable the AE103 external SPI NOR Flash driver. 当前为空函数模板，
+	  用于打通 CODE_DATA_RELOCATION 链路（AE103 ICACHE 现场调度 SPIF 命中，
+	  Flash 擦写期间驱动若 XIP 执行会取指死锁，必须搬 RAM 运行）。
+	  待 SPIF 控制器寄存器与 Flash 型号确认后填充实现。
 
 endif # SOC_AE103_NTO

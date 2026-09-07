@@ -26,6 +26,36 @@
 #include <zephyr/drivers/interrupt_controller/riscv_clic.h>
 #include <zephyr/drivers/interrupt_controller/riscv_plic.h>
 
+#if defined(CONFIG_NUCLEI_N100_SPECIAL)
+void arch_irq_enable(unsigned int irq)
+{
+	// uint32_t irqcie;
+	// irqcie = csr_read_set(0xBD1, 1 << irq);
+	csr_set(0xBD1, 1 << irq);
+}
+
+void arch_irq_disable(unsigned int irq)
+{
+	// uint32_t irqcie;
+	// irqcie = csr_read_clear(0xBD1, 1 << irq);
+	csr_clear(0xBD1, 1 << irq);
+}
+
+int arch_irq_is_enabled(unsigned int irq)
+{
+	// uint32_t irqcie;
+	// irqcie = csr_read(0xBD1);
+	// return !!(irqcie & (1 << irq));
+	return (((csr_read(0xBD1)) >> irq) & 1);
+}
+
+// void z_riscv_irq_priority_set(unsigned int irq, unsigned int prio, uint32_t flags)
+// {
+// 	// n100 not has function
+// 	//level set
+// }
+#else
+
 #if defined(CONFIG_RISCV_HAS_CLIC)
 
 void arch_irq_enable(unsigned int irq)
@@ -57,7 +87,8 @@ void arch_irq_enable(unsigned int irq)
 #if defined(CONFIG_RISCV_HAS_PLIC)
 	unsigned int level = irq_get_level(irq);
 
-	if (level == 2) {
+	if (level == 2)
+	{
 		riscv_plic_irq_enable(irq);
 		return;
 	}
@@ -77,7 +108,8 @@ void arch_irq_disable(unsigned int irq)
 #if defined(CONFIG_RISCV_HAS_PLIC)
 	unsigned int level = irq_get_level(irq);
 
-	if (level == 2) {
+	if (level == 2)
+	{
 		riscv_plic_irq_disable(irq);
 		return;
 	}
@@ -97,7 +129,8 @@ int arch_irq_is_enabled(unsigned int irq)
 #if defined(CONFIG_RISCV_HAS_PLIC)
 	unsigned int level = irq_get_level(irq);
 
-	if (level == 2) {
+	if (level == 2)
+	{
 		return riscv_plic_irq_is_enabled(irq);
 	}
 #endif
@@ -112,20 +145,39 @@ void z_riscv_irq_priority_set(unsigned int irq, unsigned int prio, uint32_t flag
 {
 	unsigned int level = irq_get_level(irq);
 
-	if (level == 2) {
+	if (level == 2)
+	{
 		riscv_plic_set_priority(irq, prio);
 	}
 }
 #endif /* CONFIG_RISCV_HAS_PLIC */
 #endif /* CONFIG_RISCV_HAS_CLIC */
+#endif /* CONFIG_NUCLEI_N100_SPECIAL */
 
 #if defined(CONFIG_RISCV_SOC_INTERRUPT_INIT)
+/*kconfig:
+select RISCV_SOC_INTERRUPT_INIT#要 SOC_AE103_NTO 被选中，这个选项就被强制打开，不可在 menuconfig
+  里关掉。
+
+config RISCV_SOC_INTERRUPT_INIT
+	default y#设了默认值 y，理论上还能被覆盖成 n。
+强制打开,即为CONFIG_RISCV_SOC_INTERRUPT_INIT宏,因此搜不到原宏,推荐打开	*/
+#ifdef CONFIG_RISCV_SOC_HAS_CUSTOM_IRQ_LOCK_OPS
+static ALWAYS_INLINE unsigned int z_soc_irq_lock(void)
+{
+	csr_set(mstatus, 0x8);//MSTATUS_MIE
+}
+#endif
 __weak void soc_interrupt_init(void)
 {
 	/* ensure that all interrupts are disabled */
-	(void)arch_irq_lock();
-
-	csr_write(mie, 0);
-	csr_write(mip, 0);
+	// (void)arch_irq_lock();//startup.s已经做了,防止中断没注入的情况下跳转中断
+#if defined(CONFIG_NUCLEI_N100_SPECIAL)//此处为非标准的IRQC
+	csr_write(0xBD1, 0);//IRQCIE
+	csr_write(0xBD0, 0);//IRQCIP
+#else//此处为标准CLINT/PLIC
+	// csr_write(mie, 0);
+	// csr_write(mip, 0);
+#endif
 }
 #endif
