@@ -6,9 +6,13 @@ if SOC_SERIES_SPK_AE103X
 config SOC_SERIES
 	default "ae103"
 
-# EC core clock. TODO: confirm against SYSCTL PLL config (48MHz default).
+# EC core clock 的 Hz 单一事实源 = dts 的 cpu0 clock-frequency（ae103_nto.dts）。
+# 主频 = 80M / FlashInfo.MainFrequency（分频数 div），div 由 clock-frequency 反推
+# （见 ecfw-zephyr/misc/flash_info.h 的 FLASH_INFO_MAIN_FREQ_DEFAULT）。BootROM 按
+# FlashInfo 配好 CLKDIV_OSC80M（硬件限制时 clamp，如 AE201N 型号最高 40M）。
+# 改主频只改 dts 的 clock-frequency 一处（对齐 neorv32/niosv 的 dt_node_int_prop_int）。
 config SYS_CLOCK_HW_CYCLES_PER_SEC
-	default 48000000
+	default $(dt_node_int_prop_int,/cpus/cpu@0,clock-frequency)
 
 # INTC0 (64 sources) + INTC1 (40 sources).
 config NUM_IRQS

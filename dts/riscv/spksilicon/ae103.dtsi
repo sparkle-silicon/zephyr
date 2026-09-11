@@ -17,7 +17,7 @@
 
 		cpu0: cpu@0 {
 			device_type = "cpu";
-			compatible = "riscv";
+			compatible = "nuclei,bumblebee"; /* N100 蜂鸟核，binding 链声明 clock-frequency */
 			riscv,isa = "rv32ec";
 			reg = <0>;
 			status = "okay";
@@ -64,18 +64,74 @@
 		};
 
 		/*
+		 * AE103 GPIO：5 个逻辑端口（GPIOA~E）→ 4 个物理基址。
+		 * GPIOC(16) 与 GPIOD(9) 共享 0x3000，GPIOD 用高位寄存器
+		 * （DR2@0x0C / DDR2@0x10 / EXT2@0x54），reg 指向 DR2 以区分
+		 * unit-address。驱动经 spksilicon,port 查表取基址/偏移。
+		 */
+		gpioa: gpio@2800 {
+			compatible = "spksilicon,ae103-gpio";
+			reg = <0x2800 0x100>;
+			ngpios = <32>;
+			spksilicon,port = <0>;
+			gpio-controller;
+			#gpio-cells = <2>;
+			status = "okay";
+		};
+
+		gpiob: gpio@2c00 {
+			compatible = "spksilicon,ae103-gpio";
+			reg = <0x2c00 0x100>;
+			ngpios = <32>;
+			spksilicon,port = <1>;
+			gpio-controller;
+			#gpio-cells = <2>;
+			status = "okay";
+		};
+
+		gpioc: gpio@3000 {
+			compatible = "spksilicon,ae103-gpio";
+			reg = <0x3000 0x100>;
+			ngpios = <16>;
+			spksilicon,port = <2>;
+			gpio-controller;
+			#gpio-cells = <2>;
+			status = "okay";
+		};
+
+		gpiod: gpio@300c {
+			compatible = "spksilicon,ae103-gpio";
+			reg = <0x300c 0x50>;
+			ngpios = <9>;
+			spksilicon,port = <3>;
+			gpio-controller;
+			#gpio-cells = <2>;
+			status = "okay";
+		};
+
+		gpioe: gpio@3400 {
+			compatible = "spksilicon,ae103-gpio";
+			reg = <0x3400 0x100>;
+			ngpios = <24>;
+			spksilicon,port = <4>;
+			gpio-controller;
+			#gpio-cells = <2>;
+			status = "okay";
+		};
+
+		/*
 		 * AE103 UART: 16550-compatible, 4 ports（手册地址映射表 §4.1）。
 		 *   UARTA/B  oversample 16x (16550 standard)
 		 *   UART0/1  oversample 8x  (non-standard, low-power variant)
 		 *
-		 * 波特率时钟 clock-frequency = 主频经两级分频（ROM/KERNEL/
-		 * KERNEL_UART.c UART_Init）：
+		 * 波特率时钟 f_uart 由主频经两级分频得出（ROM/KERNEL/KERNEL_UART.c
+		 * UART_Init 通式）：
 		 *   f_uart = CHIP_CLOCK_INT_HIGH / (SYSCTL_CLKDIV_OSC80M + 1)
 		 *                                   / (SYSCTL_CLKDIV_UART  + 1)
-		 * 默认配置：OSC80M 复位值 0x3（手册 5.11.41，即 80M/4）、
-		 * UART 分频复位值 0（软件未配置），故
-		 *   f_uart = 80M / 4 / 1 = 20 MHz（与 CPU 主频同频）。
-		 * 后续 SYSCTL 驱动落地若改分频，需同步本值或改驱动动态读寄存器。
+		 * 默认：OSC80M 复位值 0x3（手册 5.11.41，即 80M/4）、UART 分频复位
+		 * 值 0，故 f_uart = 80M/4/1 = 20 MHz（与 CPU 主频同频）。该频率不在
+		 * DT 硬编码，由驱动经 clock.h 的
+		 * ae103_clock_freq_get(AE103_CLOCK_DOMAIN_UART) 动态读取。
 		 *
 		 * console 默认挂 UART0，对齐裸机固件 debug 口。寄存器块 0x20
 		 * 覆盖 0x00~0x1F（标准 16550 0x00~0x07 + AE103 扩展 USR@0x1F）。
@@ -83,7 +139,6 @@
 		uarta: serial@5000 {
 			compatible = "spksilicon,ae103-uart";
 			reg = <0x5000 0x20>;
-			clock-frequency = <20000000>;
 			spksilicon,oversample-ratio = <16>;
 			status = "disabled";
 		};
@@ -91,7 +146,6 @@
 		uartb: serial@5400 {
 			compatible = "spksilicon,ae103-uart";
 			reg = <0x5400 0x20>;
-			clock-frequency = <20000000>;
 			spksilicon,oversample-ratio = <16>;
 			status = "disabled";
 		};
@@ -99,7 +153,6 @@
 		uart0: serial@5800 {
 			compatible = "spksilicon,ae103-uart";
 			reg = <0x5800 0x20>;
-			clock-frequency = <20000000>;
 			spksilicon,oversample-ratio = <8>;
 			status = "disabled";
 		};
@@ -107,7 +160,6 @@
 		uart1: serial@5c00 {
 			compatible = "spksilicon,ae103-uart";
 			reg = <0x5c00 0x20>;
-			clock-frequency = <20000000>;
 			spksilicon,oversample-ratio = <8>;
 			status = "disabled";
 		};

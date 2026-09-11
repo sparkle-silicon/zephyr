@@ -46,16 +46,31 @@ SECTION_FUNC(vectors, __start)
 	#  lw t0, (a0)
 	#  sw t0, (a1)
 	 jal	ra,__scatterload_vector
+	# csrwi 0xBD1, 0
+	# csrwi 0xBD0, 0
+
 #else
 	/*
 	 * 标准 RISC-V 路径：mtvec 指向 zephyr 统一异常入口 _isr_wrapper。
 	 */
 	la t0, _isr_wrapper
 	csrw mtvec, t0
+	# la t0, _irq_vector_table
+	# csrw 0x307, t0 /* mtvt */
+	# csrwi mie, 0
+	# csrwi mip, 0
 #endif /* CONFIG_NUCLEI_N100_SPECIAL */
-
+#if CONFIG_INCLUDE_RESET_VECTOR
 	/* Jump to __reset */
 	tail __reset
+#else
+	/*
+	 * jump to __initialize
+	 * use call opcode in case __initialize is far away.
+	 * This will be dependent on linker.ld configuration.
+	 */
+	call __initialize
+#endif
 /*
  * _start：复位入口桩，落点 0x80084（FlashInfo.ReStart + FLASH_BASE_ADDR）。
  * 直接跳 zephyr __start（vector.S，链接在 0x80200）接管启动。

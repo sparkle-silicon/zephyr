@@ -30,37 +30,56 @@
 LOG_MODULE_REGISTER(ae103_uart, LOG_LEVEL_INF);
 
 #include "uart.h"
+#include "clock.h"   /* ae103_clock_freq_get（波特率时钟动态拉取） */
+#include "sysctl.h"  /* ae103_sysctl_pio_cfg_set / clock_enable（引脚复用 + 时钟门控） */
 
-/* --- 寄存器偏移（16550 标准，8-bit 访问） ------------------------- */
-#define AE103_UART_RBR   0x00U /* 接收缓冲（读） */
-#define AE103_UART_THR   0x00U /* 发送保持（写） */
-#define AE103_UART_DLL   0x00U /* 除数低字节（DLAB=1） */
-#define AE103_UART_DLH   0x01U /* 除数高字节（DLAB=1） */
-#define AE103_UART_IER   0x01U /* 中断使能 */
-#define AE103_UART_IIR   0x02U /* 中断状态 */
-#define AE103_UART_FCR   0x02U /* FIFO 控制 */
-#define AE103_UART_LCR   0x03U /* 线路控制 */
-#define AE103_UART_MCR   0x04U /* 调制解调控制 */
-#define AE103_UART_LSR   0x05U /* 线路状态 */
-#define AE103_UART_MSR   0x06U /* 调制解调状态 */
-
-/* LCR 位域 */
-#define AE103_UART_LCR_DLAB BIT(7) /* 除数锁存访问使能 */
-#define AE103_UART_LCR_8N1  0x03U  /* 8 数据位 / 无校验 / 1 停止位 */
-
-/* LSR 位域 */
-#define AE103_UART_LSR_DR   BIT(0) /* 接收数据就绪 */
-#define AE103_UART_LSR_THRE BIT(5) /* 发送保持寄存器空 */
-
-/* FCR 位域 */
-#define AE103_UART_FCR_FIFOEN BIT(0)
-
-struct ae103_uart_config {
-	uintptr_t base;
-	uint32_t clock_freq; /* 波特率时钟（Hz），DT clock-frequency */
-	uint8_t oversample;  /* 过采样率：8 或 16 */
-	uint32_t baudrate;   /* 初始波特率，DT current-speed */
+static const struct ae103_uart_pin uart0_pins[] = {
+	{ 1U, 8U, 2U },   /* GPIOA24，UART0 TX */
+	{ 1U, 9U, 2U },   /* GPIOA25，UART0 RX */
 };
+
+static const struct ae103_uart_pin uart1_pins[] = {
+	{ 2U, 1U, 1U },   /* GPIOB1，UART1 TX */
+	{ 2U, 3U, 1U },   /* GPIOB3，UART1 RX */
+};
+
+static const struct ae103_uart_pin uarta_pins[] = {
+	/* ⚠️ 固件 sysctl_iomux_uarta 仅配 GPIOB6(func=3)，其 disable 却清
+	 * GPIOA8/9（历史遗留），资料不一致，UARTA 实际引脚待芯片手册确认。 */
+	{ 2U, 6U, 3U },   /* GPIOB6，UARTA（单引脚，疑点） */
+};
+
+static const struct ae103_uart_pin uartb_pins[] = {
+	{ 3U, 9U, 2U },   /* GPIOB25，UARTB TX */
+	{ 3U, 10U, 2U },  /* GPIOB26，UARTB RX */
+};
+
+enum ae103_uart_channel{
+	AE103_UART_CH_UARTA,
+	AE103_UART_CH_UARTB,
+	AE103_UART_CH_UART0,
+	AE103_UART_CH_UART1,
+};
+
+static const struct ae103_uart_iomux uart_iomux[] = {
+	[AE103_UART_CH_UARTA] = { AE103_SYSCTL_MODEN0_UARTA_EN, uarta_pins, ARRAY_SIZE(uarta_pins) },
+	[AE103_UART_CH_UARTB] = { AE103_SYSCTL_MODEN0_UARTB_EN, uartb_pins, ARRAY_SIZE(uartb_pins) },
+	[AE103_UART_CH_UART0] = { AE103_SYSCTL_MODEN0_UART0_EN, uart0_pins, ARRAY_SIZE(uart0_pins) },
+	[AE103_UART_CH_UART1] = { AE103_SYSCTL_MODEN0_UART1_EN, uart1_pins, ARRAY_SIZE(uart1_pins) },
+};
+
+/* base 地址 → 通道号（4 路基址芯片固定） */
+static int uart_channel(uintptr_t base)
+{
+	switch (base)
+	{
+		case AE103_UARTA_BASE_ADDR: return AE103_UART_CH_UARTA;
+		case AE103_UARTB_BASE_ADDR: return AE103_UART_CH_UARTB;
+		case AE103_UART0_BASE_ADDR: return AE103_UART_CH_UART0;
+		case AE103_UART1_BASE_ADDR: return AE103_UART_CH_UART1;
+		default: return -1;
+	}
+}
 
 static inline void uart_write8(const struct device *dev, uint8_t off, uint8_t val)
 {
@@ -95,7 +114,8 @@ static uint32_t ae103_uart_baud_divisor(const struct ae103_uart_config *cfg,
 					uint32_t baud)
 {
 	uint32_t half = cfg->oversample / 2U;
-	uint32_t divisor = (cfg->clock_freq / baud + half) / cfg->oversample;
+	uint32_t freq = ae103_clock_freq_get(AE103_CLOCK_DOMAIN_UART);
+	uint32_t divisor = (freq / baud + half) / cfg->oversample;
 
 	/* divisor 必须 ≥ 1：为 0 会关停波特率发生器（DLL/DLH 写 0）。 */
 	return divisor < 1U ? 1U : divisor;
@@ -107,10 +127,11 @@ int ae103_uart_baud_set(const struct device *dev, uint32_t baud)
 	uint32_t divisor = ae103_uart_baud_divisor(cfg, baud);
 
 	/* DLAB 时序：置 DLAB → 写 DLL/DLH → 清 DLAB。 */
-	uart_write8(dev, AE103_UART_LCR, AE103_UART_LCR_DLAB | AE103_UART_LCR_8N1);
-	uart_write8(dev, AE103_UART_DLL, (uint8_t)(divisor & 0xFFU));
-	uart_write8(dev, AE103_UART_DLH, (uint8_t)((divisor >> 8) & 0xFFU));
-	uart_write8(dev, AE103_UART_LCR, AE103_UART_LCR_8N1);
+	uart_write8(dev, AE103_UART_LCR_OFFSET,
+		    AE103_UART_LCR_DLAB | AE103_UART_LCR_8N1);
+	uart_write8(dev, AE103_UART_DLL_OFFSET, (uint8_t)(divisor & 0xFFU));
+	uart_write8(dev, AE103_UART_DLH_OFFSET, (uint8_t)((divisor >> 8) & 0xFFU));
+	uart_write8(dev, AE103_UART_LCR_OFFSET, AE103_UART_LCR_8N1);
 
 	return 0;
 }
@@ -118,12 +139,27 @@ int ae103_uart_baud_set(const struct device *dev, uint32_t baud)
 static int ae103_uart_init(const struct device *dev)
 {
 	const struct ae103_uart_config *cfg = dev->config;
+	int ch = uart_channel(cfg->base);
 
-	/* 波特率 + 8N1。 */
+	/* 第 1 步：引脚复用为 UART + 使能时钟（对齐固件 gpio2serial）。 */
+	if (ch >= 0)
+	{
+		const struct ae103_uart_iomux *mux = &uart_iomux[ch];
+
+		for (uint32_t i = 0U; i < mux->pin_count; i++)
+		{
+			ae103_sysctl_pio_cfg_set(mux->pins[i].pio,
+						 mux->pins[i].pin,
+						 mux->pins[i].func);
+		}
+		ae103_sysctl_clock_enable(mux->moden_mask, 0U);
+	}
+
+	/* 第 2 步：波特率 + 8N1（对齐固件 serial_config）。 */
 	ae103_uart_baud_set(dev, cfg->baudrate);
 
 	/* FIFO 使能（轮询下不影响收发正确性，但对齐裸机固件 serial_config）。 */
-	uart_write8(dev, AE103_UART_FCR, AE103_UART_FCR_FIFOEN);
+	uart_write8(dev, AE103_UART_FCR_OFFSET, AE103_UART_FCR_FIFOEN);
 
 	LOG_INF("AE103 UART @ 0x%lx oversample %ux ready",
 		(unsigned long)cfg->base, cfg->oversample);
@@ -133,8 +169,9 @@ static int ae103_uart_init(const struct device *dev)
 
 static int ae103_uart_poll_in(const struct device *dev, unsigned char *c)
 {
-	if ((uart_read8(dev, AE103_UART_LSR) & AE103_UART_LSR_DR) != 0U) {
-		*c = uart_read8(dev, AE103_UART_RBR);
+	if ((uart_read8(dev, AE103_UART_LSR_OFFSET) & AE103_UART_LSR_DR) != 0U)
+	{
+		*c = uart_read8(dev, AE103_UART_RBR_OFFSET);
 		return 0;
 	}
 
@@ -144,10 +181,11 @@ static int ae103_uart_poll_in(const struct device *dev, unsigned char *c)
 static void ae103_uart_poll_out(const struct device *dev, unsigned char c)
 {
 	/* 等发送保持寄存器空（THRE=1）。 */
-	while ((uart_read8(dev, AE103_UART_LSR) & AE103_UART_LSR_THRE) == 0U) {
+	while ((uart_read8(dev, AE103_UART_LSR_OFFSET) & AE103_UART_LSR_THRE) == 0U)
+	{
 	}
 
-	uart_write8(dev, AE103_UART_THR, c);
+	uart_write8(dev, AE103_UART_THR_OFFSET, c);
 }
 
 static const struct uart_driver_api ae103_uart_api = {
@@ -158,7 +196,6 @@ static const struct uart_driver_api ae103_uart_api = {
 #define AE103_UART_INIT(n)                                             \
 	static const struct ae103_uart_config uart_config_##n = {      \
 		.base = DT_INST_REG_ADDR(n),                            \
-		.clock_freq = DT_INST_PROP(n, clock_frequency),          \
 		.oversample = DT_INST_PROP(n, spksilicon_oversample_ratio), \
 		.baudrate = DT_INST_PROP_OR(n, current_speed, 115200),   \
 	};                                                               \

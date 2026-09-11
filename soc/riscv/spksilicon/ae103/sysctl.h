@@ -1,0 +1,238 @@
+/*
+ * Copyright (c) 2026 Sparkle Silicon Technology Corp., Ltd.
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * @file sysctl.h
+ * @brief AE103 SYSCTL（系统控制）驱动 —— 时钟门控 / 复位 / 分频 / 引脚复用。
+ *
+ * 这是 AE103 SoC 的基础设施模块：GPIO / UART / WDT 等外设的时钟使能与
+ * 软复位都走这里，soc.c 的系统复位 sys_arch_reboot() 也最终落点于此。
+ *
+ * 命名规则（对齐固件 AE_REG.H / AE_FUNC.H，加 AE103_ 前缀、保留原名尾部）：
+ *   - 寄存器偏移宏 → AE103_SYSCTL_MODEN0_OFFSET（原名 SYSCTL_MODEN0_OFFSET）
+ *   - 位域掩码     → AE103_SYSCTL_MODEN0_GPIO_EN（原名 SYSCTL_MODEN0_GPIO_EN）
+ *   - 对外函数     → ae103_sysctl_*（蛇形）
+ * 便于与 SPK32AE103NTO/Firmware 固件库交叉对照维护。
+ *
+ * ⚠️ 无 LOG 依赖：本模块可能被 wdt.c 的 _WdogInit 早期路径（BSS 清零前）
+ *    经 ae103_sysctl_clock_div_get 间接调用，故全部实现保持纯 MMIO 读写，
+ *    不引用任何全局变量、不触 LOG_*。
+ */
+
+#ifndef __RISCV_SPKSILICON_AE103_SYSCTL_H_
+#define __RISCV_SPKSILICON_AE103_SYSCTL_H_
+
+#include <stdint.h>
+
+/* ================= 寄存器偏移（对齐 AE_REG.H:4606-4674） ============ */
+#define AE103_SYSCTL_BASE_ADDR                0x30400UL
+
+#define AE103_SYSCTL_MODEN0_OFFSET            0x20
+#define AE103_SYSCTL_MODEN1_OFFSET            0x24
+#define AE103_SYSCTL_RST0_OFFSET              0x28
+#define AE103_SYSCTL_RST1_OFFSET              0x2C
+#define AE103_SYSCTL_CLKDIV_OWI_OFFSET        0x34
+#define AE103_SYSCTL_CLKDIV_CEC_OFFSET        0x38
+#define AE103_SYSCTL_CLKDIV_TMR0_OFFSET       0x3C
+#define AE103_SYSCTL_CLKDIV_TMR1_OFFSET       0x40
+#define AE103_SYSCTL_CLKDIV_TMR2_OFFSET       0x44
+#define AE103_SYSCTL_CLKDIV_TMR3_OFFSET       0x48
+#define AE103_SYSCTL_CLKDIV_GPIODB_OFFSET     0x50
+#define AE103_SYSCTL_PIO0_CFG_OFFSET          0x54
+#define AE103_SYSCTL_PIO1_CFG_OFFSET          0x58
+#define AE103_SYSCTL_PIO2_CFG_OFFSET          0x5C
+#define AE103_SYSCTL_PIO3_CFG_OFFSET          0x60
+#define AE103_SYSCTL_PIO4_CFG_OFFSET          0x64
+#define AE103_SYSCTL_PIO5_CFG_OFFSET          0x68
+#define AE103_SYSCTL_PIO0_UDCFG_OFFSET        0x6C
+#define AE103_SYSCTL_PIO1_UDCFG_OFFSET        0x70
+#define AE103_SYSCTL_PIO2_UDCFG_OFFSET        0x74
+#define AE103_SYSCTL_PIO3_UDCFG_OFFSET        0x78
+#define AE103_SYSCTL_PIO_SEL_OFFSET           0x7C
+#define AE103_SYSCTL_CLKDIV_SMB_OFFSET        0x84
+#define AE103_SYSCTL_CLKDIV_UART_OFFSET       0x88
+#define AE103_SYSCTL_CLKDIV_PS2_OFFSET        0x90
+#define AE103_SYSCTL_CLKDIV_SPIM_OFFSET       0x94
+#define AE103_SYSCTL_PIO0_IECFG_OFFSET        0xA4
+#define AE103_SYSCTL_PIO1_IECFG_OFFSET        0xA8
+#define AE103_SYSCTL_PIO2_IECFG_OFFSET        0xAC
+#define AE103_SYSCTL_PIO3_IECFG_OFFSET        0xB0
+#define AE103_SYSCTL_CLKDIV_SPIS_OFFSET       0xB4
+#define AE103_SYSCTL_CLKDIV_PECI_OFFSET       0xB8
+#define AE103_SYSCTL_CLKDIV_OSC80M_OFFSET     0xCC
+#define AE103_SYSCTL_CLKDIV_OSC80M_ADC_OFFSET 0xD0
+#define AE103_SYSCTL_PAD_1P8_OFFSET           0xE0 /* 1.8V IO 电平选择（按 pad 位） */
+
+/* ================= 位域掩码（对齐 AE_FUNC.H:92-227） ================ */
+
+/* MODEN0 —— 模块时钟使能（1 = 使能） */
+#define AE103_SYSCTL_MODEN0_TMR1_EN     0x80000000UL
+#define AE103_SYSCTL_MODEN0_TMR2_EN     0x40000000UL
+#define AE103_SYSCTL_MODEN0_TMR3_EN     0x20000000UL
+#define AE103_SYSCTL_MODEN0_KBS_EN      0x10000000UL
+#define AE103_SYSCTL_MODEN0_PS2_1_EN    0x08000000UL
+#define AE103_SYSCTL_MODEN0_PS2_0_EN    0x04000000UL
+#define AE103_SYSCTL_MODEN0_ROMP_EN     0x02000000UL
+#define AE103_SYSCTL_MODEN0_PMCKBC_EN   0x01000000UL
+#define AE103_SYSCTL_MODEN0_SHM_EN      0x00800000UL
+#define AE103_SYSCTL_MODEN0_SWUC_EN     0x00400000UL
+#define AE103_SYSCTL_MODEN0_BRAM_EN     0x00200000UL
+#define AE103_SYSCTL_MODEN0_GPIO_EN     0x00100000UL
+#define AE103_SYSCTL_MODEN0_SMB0_EN     0x00080000UL
+#define AE103_SYSCTL_MODEN0_SMB1_EN     0x00040000UL
+#define AE103_SYSCTL_MODEN0_SMB2_EN     0x00020000UL
+#define AE103_SYSCTL_MODEN0_SMB3_EN     0x00010000UL
+#define AE103_SYSCTL_MODEN0_WDT_EN      0x00008000UL
+#define AE103_SYSCTL_MODEN0_SPIS_EN     0x00004000UL
+#define AE103_SYSCTL_MODEN0_ADC_EN      0x00001000UL
+#define AE103_SYSCTL_MODEN0_PWM_EN      0x00000800UL
+#define AE103_SYSCTL_MODEN0_UARTA_EN    0x00000400UL
+#define AE103_SYSCTL_MODEN0_UARTB_EN    0x00000200UL
+#define AE103_SYSCTL_MODEN0_UART0_EN    0x00000100UL
+#define AE103_SYSCTL_MODEN0_UART1_EN    0x00000080UL
+#define AE103_SYSCTL_MODEN0_SPIM_EN     0x00000001UL
+
+/* MODEN1 —— 模块时钟使能（1 = 使能） */
+#define AE103_SYSCTL_MODEN1_I3C_SLAVE_EN  0x04000000UL
+#define AE103_SYSCTL_MODEN1_I3C_MASTER_EN 0x02000000UL
+#define AE103_SYSCTL_MODEN1_I3C_SUB_EN    0x01000000UL
+#define AE103_SYSCTL_MODEN1_IRAM_EN       0x00800000UL
+#define AE103_SYSCTL_MODEN1_PECI_EN       0x00400000UL
+#define AE103_SYSCTL_MODEN1_RTC_EN        0x00200000UL
+#define AE103_SYSCTL_MODEN1_ROM_EN        0x00100000UL
+#define AE103_SYSCTL_MODEN1_CACHE_EN      0x00080000UL
+#define AE103_SYSCTL_MODEN1_IVT_EN        0x00040000UL
+#define AE103_SYSCTL_MODEN1_OWI_EN        0x00020000UL
+#define AE103_SYSCTL_MODEN1_CEC_EN        0x00010000UL
+#define AE103_SYSCTL_MODEN1_SMB4_EN       0x00008000UL
+#define AE103_SYSCTL_MODEN1_SMB5_EN       0x00004000UL
+#define AE103_SYSCTL_MODEN1_IRAM1_EN      0x00002000UL
+#define AE103_SYSCTL_MODEN1_ESPI_EN       0x00001000UL
+#define AE103_SYSCTL_MODEN1_APB_EN        0x00000800UL
+#define AE103_SYSCTL_MODEN1_DRAM_EN       0x00000400UL
+#define AE103_SYSCTL_MODEN1_SYSCTL_EN     0x00000200UL
+#define AE103_SYSCTL_MODEN1_EFUSE_EN      0x00000040UL
+#define AE103_SYSCTL_MODEN1_GPIODB_EN     0x00000020UL
+#define AE103_SYSCTL_MODEN1_SRAM_EN       0x00000010UL
+#define AE103_SYSCTL_MODEN1_SPIF_EN       0x00000008UL
+#define AE103_SYSCTL_MODEN1_H2E_EN        0x00000004UL
+#define AE103_SYSCTL_MODEN1_ICTL_EN       0x00000002UL
+#define AE103_SYSCTL_MODEN1_TMR0_EN       0x00000001UL
+
+/* RST0 —— 外设软复位（1 = 复位，清 0 = 解复位） */
+#define AE103_SYSCTL_RST0_PS2_0_RST   0x80000000UL
+#define AE103_SYSCTL_RST0_ROMP_RST    0x40000000UL
+#define AE103_SYSCTL_RST0_KBC_RST     0x20000000UL
+#define AE103_SYSCTL_RST0_PMC5_RST    0x10000000UL
+#define AE103_SYSCTL_RST0_PMC4_RST    0x08000000UL
+#define AE103_SYSCTL_RST0_PMC3_RST    0x04000000UL
+#define AE103_SYSCTL_RST0_PMC2_RST    0x02000000UL
+#define AE103_SYSCTL_RST0_PMC1_RST    0x01000000UL
+#define AE103_SYSCTL_RST0_SHM_RST     0x00800000UL
+#define AE103_SYSCTL_RST0_SWUC_RST    0x00400000UL
+#define AE103_SYSCTL_RST0_BRAM_RST    0x00200000UL
+#define AE103_SYSCTL_RST0_GPIO_RST    0x00100000UL
+#define AE103_SYSCTL_RST0_SMB0_RST    0x00080000UL
+#define AE103_SYSCTL_RST0_SMB1_RST    0x00040000UL
+#define AE103_SYSCTL_RST0_SMB2_RST    0x00020000UL
+#define AE103_SYSCTL_RST0_SMB3_RST    0x00010000UL
+#define AE103_SYSCTL_RST0_WDT_RST     0x00008000UL
+#define AE103_SYSCTL_RST0_SPIS_RST    0x00004000UL
+#define AE103_SYSCTL_RST0_HOST_RST    0x00002000UL
+#define AE103_SYSCTL_RST0_ADC_RST     0x00001000UL
+#define AE103_SYSCTL_RST0_PWM_RST     0x00000800UL
+#define AE103_SYSCTL_RST0_UARTA_RST   0x00000400UL
+#define AE103_SYSCTL_RST0_UARTB_RST   0x00000200UL
+#define AE103_SYSCTL_RST0_UART0_RST   0x00000100UL
+#define AE103_SYSCTL_RST0_UART1_RST   0x00000080UL
+#define AE103_SYSCTL_RST0_SPIM_RST    0x00000001UL
+
+/* RST1 —— 外设软复位 + 系统复位（CHIP_RST = 整芯片复位） */
+#define AE103_SYSCTL_RST1_I3C1_SLAVE_RST 0x80000000UL
+#define AE103_SYSCTL_RST1_I3C0_MASTER_RST 0x40000000UL
+#define AE103_SYSCTL_RST1_PECI_RST     0x20000000UL
+#define AE103_SYSCTL_RST1_RTC_RST      0x10000000UL
+#define AE103_SYSCTL_RST1_IVT_RST      0x08000000UL
+#define AE103_SYSCTL_RST1_SMB4_RST     0x04000000UL
+#define AE103_SYSCTL_RST1_SMB5_RST     0x02000000UL
+#define AE103_SYSCTL_RST1_OWI_RST      0x01000000UL
+#define AE103_SYSCTL_RST1_CEC_RST      0x00800000UL
+#define AE103_SYSCTL_RST1_IRAM1_RST    0x00400000UL
+#define AE103_SYSCTL_RST1_ESPI_RST     0x00200000UL
+#define AE103_SYSCTL_RST1_HRSTLDN_EN   0x00100000UL
+#define AE103_SYSCTL_RST1_HRSTPNP_EN   0x00080000UL
+#define AE103_SYSCTL_RST1_LPCRST_EN    0x00040000UL
+#define AE103_SYSCTL_RST1_CHIP_RST     0x00010000UL
+#define AE103_SYSCTL_RST1_APB_RST      0x00008000UL
+#define AE103_SYSCTL_RST1_SYSCTL_RST   0x00004000UL
+#define AE103_SYSCTL_RST1_EFUSE_RST    0x00000800UL
+#define AE103_SYSCTL_RST1_PNP_RST      0x00000400UL
+#define AE103_SYSCTL_RST1_LDN_RST      0x00000200UL
+#define AE103_SYSCTL_RST1_SPIF_RST     0x00000100UL
+#define AE103_SYSCTL_RST1_H2E_RST      0x00000080UL
+#define AE103_SYSCTL_RST1_ICTL_RST     0x00000040UL
+#define AE103_SYSCTL_RST1_TMR0_RST     0x00000020UL
+#define AE103_SYSCTL_RST1_TMR1_RST     0x00000010UL
+#define AE103_SYSCTL_RST1_TMR2_RST     0x00000008UL
+#define AE103_SYSCTL_RST1_TMR3_RST     0x00000004UL
+#define AE103_SYSCTL_RST1_KBS_RST      0x00000002UL
+#define AE103_SYSCTL_RST1_PS2_1_RST    0x00000001UL
+
+/* ================= 对外 API ======================================== */
+
+/**
+ * @brief 使能模块时钟（MODEN0/MODEN1 读改写置位）。
+ * @param moden0_mask MODEN0 位域（AE103_SYSCTL_MODEN0_x_EN），无则传 0。
+ * @param moden1_mask MODEN1 位域（AE103_SYSCTL_MODEN1_x_EN），无则传 0。
+ */
+void ae103_sysctl_clock_enable(uint32_t moden0_mask, uint32_t moden1_mask);
+
+/**
+ * @brief 禁用模块时钟（MODEN0/MODEN1 读改写清位）。
+ */
+void ae103_sysctl_clock_disable(uint32_t moden0_mask, uint32_t moden1_mask);
+
+/**
+ * @brief 外设软复位 —— 置位复位（对齐固件 sysctl_mod_reset_start）。
+ * @param rst0_mask RST0 位域（AE103_SYSCTL_RST0_x_RST），无则传 0。
+ * @param rst1_mask RST1 位域（AE103_SYSCTL_RST1_x_RST），无则传 0。
+ */
+void ae103_sysctl_reset_start(uint32_t rst0_mask, uint32_t rst1_mask);
+
+/**
+ * @brief 外设软复位 —— 清位解复位（对齐固件 sysctl_mod_reset_finish）。
+ */
+void ae103_sysctl_reset_finish(uint32_t rst0_mask, uint32_t rst1_mask);
+
+/**
+ * @brief 外设软复位（start → finish 一次完成，含短暂空转）。
+ */
+void ae103_sysctl_periph_reset(uint32_t rst0_mask, uint32_t rst1_mask);
+
+/**
+ * @brief 整芯片复位（置 RST1.CHIP_RST）。复位生效后不返回。
+ */
+void ae103_sysctl_system_reset(void);
+
+/**
+ * @brief 写某外设时钟分频值（f = 80M / (div + 1)）。
+ * @param clkdiv_offset CLKDIV 寄存器偏移（AE103_SYSCTL_CLKDIV_*_OFFSET）。
+ * @param div           分频值（0 = 不分频）。
+ */
+void ae103_sysctl_clock_div_set(uint32_t clkdiv_offset, uint8_t div);
+
+/**
+ * @brief 读某外设时钟分频值。
+ * @return 分频值 div（0 = 不分频）。
+ */
+uint8_t ae103_sysctl_clock_div_get(uint32_t clkdiv_offset);
+
+/**
+ * @brief 写引脚复用（PIOx_CFG，每 pin 2bit，对齐固件 sysctl_iomux_config 的寄存器布局）。
+ * @param pio  物理 PIO 端口号 0~5（PIOx_CFG，每端口 16 pin）。
+ * @param pin  端口内引脚号 0~15。
+ * @param func 复用值 0~3（0 = GPIO 输入，1/2/3 = 外设功能，见芯片手册）。
+ */
+void ae103_sysctl_pio_cfg_set(uint32_t pio, uint32_t pin, uint32_t func);
+
+#endif /* __RISCV_SPKSILICON_AE103_SYSCTL_H_ */

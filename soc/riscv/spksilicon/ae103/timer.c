@@ -46,6 +46,9 @@ LOG_MODULE_REGISTER(ae103_timer, LOG_LEVEL_INF);
 #define AE103_TIMER_TCR_LOOP    BIT(1) /* 1 = 自动重装载 */
 #define AE103_TIMER_TCR_INT_MSK BIT(2) /* 1 = 屏蔽中断 */
 
+/* TIS 位域 */
+#define AE103_TIMER_TIS_INT     BIT(0) /* 1 = 中断挂起 */
+
 struct ae103_timer_config {
 	uintptr_t base;
 };
@@ -111,6 +114,57 @@ void ae103_timer_stop(const struct device *dev, uint8_t ch)
 uint16_t ae103_timer_get_count(const struct device *dev, uint8_t ch)
 {
 	return timer_read16(timer_ch_base(dev, ch), AE103_TIMER_TCV);
+}
+
+/* --- 使能/禁用（对齐固件 TIMER_Enable / TIMER_Disable） ----------- */
+void ae103_timer_enable(const struct device *dev, uint8_t ch)
+{
+	uintptr_t tcr = timer_ch_base(dev, ch) + AE103_TIMER_TCR;
+
+	sys_write8(sys_read8(tcr) | AE103_TIMER_TCR_EN, tcr);
+}
+
+void ae103_timer_disable(const struct device *dev, uint8_t ch)
+{
+	uintptr_t tcr = timer_ch_base(dev, ch) + AE103_TIMER_TCR;
+
+	sys_write8(sys_read8(tcr) & ~AE103_TIMER_TCR_EN, tcr);
+}
+
+/* --- 中断控制（对齐固件 Timer_Int_* 系列） ------------------------- */
+void ae103_timer_int_enable(const struct device *dev, uint8_t ch)
+{
+	uintptr_t tcr = timer_ch_base(dev, ch) + AE103_TIMER_TCR;
+
+	/* INT_MSK = 0 → 允许中断 */
+	sys_write8(sys_read8(tcr) & ~AE103_TIMER_TCR_INT_MSK, tcr);
+}
+
+void ae103_timer_int_disable(const struct device *dev, uint8_t ch)
+{
+	uintptr_t tcr = timer_ch_base(dev, ch) + AE103_TIMER_TCR;
+
+	sys_write8(sys_read8(tcr) | AE103_TIMER_TCR_INT_MSK, tcr);
+}
+
+bool ae103_timer_int_enable_read(const struct device *dev, uint8_t ch)
+{
+	uintptr_t tcr = timer_ch_base(dev, ch) + AE103_TIMER_TCR;
+
+	return (sys_read8(tcr) & AE103_TIMER_TCR_INT_MSK) == 0U;
+}
+
+bool ae103_timer_int_status(const struct device *dev, uint8_t ch)
+{
+	uintptr_t tis = timer_ch_base(dev, ch) + AE103_TIMER_TIS;
+
+	return (sys_read8(tis) & AE103_TIMER_TIS_INT) != 0U;
+}
+
+void ae103_timer_clear_irq(const struct device *dev, uint8_t ch)
+{
+	/* 读 TEOI 即清中断（对齐固件 vDelayXms 的 `TIMERx_TEOI;`） */
+	sys_read8(timer_ch_base(dev, ch) + AE103_TIMER_TEOI);
 }
 
 /* --- 设备注册 ------------------------------------------------------ */

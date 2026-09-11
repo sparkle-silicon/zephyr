@@ -58,6 +58,32 @@ config AE103_BOOT_RECOVERY
 
 endchoice
 
+choice SPK_AE201_SKU
+	prompt "AE201 SKU (main clock upper limit)"
+	default AE201_SKU_N
+	help
+	  AE201 系列芯片型号（eFUSE 决定），决定主频硬件上限：
+	    - AE201N / AE201B：40 MHz（分频 div 下限 1）
+	    - AE201E：80 MHz（分频 div 下限 0）
+	  主频分频 div 下限据此放开（见 clock.h AE103_CLOCK_DIV_MIN）。
+
+config AE201_SKU_N
+	bool "AE201N (40 MHz)"
+
+config AE201_SKU_B
+	bool "AE201B (40 MHz)"
+
+config AE201_SKU_E
+	bool "AE201E (80 MHz)"
+
+endchoice
+
+# 隐藏 int：主频上限由上面的型号 choice 唯一决定，不让用户手改。
+config AE201_CLOCK_MAX_HZ
+	int
+	default 40000000 if AE201_SKU_N || AE201_SKU_B
+	default 80000000 if AE201_SKU_E
+
 config WDOG_INIT
 	bool "AE103 early watchdog init (before C domain)"
 	default n
@@ -68,6 +94,38 @@ config WDOG_INIT
 	  / call _WdogInit 调用点接入。
 
 	  ⚠️ 寄存器操作待芯片资料确认（WDT 中断号 = 19，SYSCTL@0x30400 为复位域）。
+
+menu "AE103 compiler options"
+
+config AE103_OPT_FSIGNED_CHAR
+	bool "Compile with -fsigned-char"
+	default y
+	help
+	  Treat char as signed. RISC-V GCC defaults to unsigned char, and this
+	  flag changes char semantics globally (kernel / libc / app). Aligns
+	  with original firmware common.mk (-fsigned-char).
+
+config AE103_OPT_MSAVE_RESTORE
+	bool "Compile with -msave-restore"
+	default y
+	help
+	  RISC-V tail-call shared save/restore routines to reduce code size.
+	  Aligns with original firmware common.mk (-msave-restore).
+
+config AE103_OPT_FNO_UNROLL_LOOPS
+	bool "Compile with -fno-unroll-loops"
+	default y
+	help
+	  Disable loop unrolling to reduce code size. Aligns with original
+	  firmware common.mk (-fno-unroll-loops).
+
+config AE103_OPT_WEXTRA
+	bool "Compile with -Wextra"
+	help
+	  Enable extra compiler warnings. Disabled by default (matches original
+	  firmware common.mk, where -Wextra is commented out).
+
+endmenu
 
 config AE103_TIMER
 	bool "AE103 hardware timer driver"
@@ -87,6 +145,8 @@ config AE103_TIMER_INIT_PRIORITY
 config AE103_UART
 	bool "AE103 UART driver (16550-compatible)"
 	default y
+	depends on SERIAL
+	select SERIAL_HAS_DRIVER
 	help
 	  Enable the AE103 UART driver. Six 16550-compatible ports:
 	  UARTA/B oversample 16x (standard), UART0~3 oversample 8x
@@ -102,5 +162,16 @@ config AE103_SPI_FLASH
 	  用于打通 CODE_DATA_RELOCATION 链路（AE103 ICACHE 现场调度 SPIF 命中，
 	  Flash 擦写期间驱动若 XIP 执行会取指死锁，必须搬 RAM 运行）。
 	  待 SPIF 控制器寄存器与 Flash 型号确认后填充实现。
+
+config AE103_GPIO
+	bool "AE103 GPIO driver (DW_apb_gpio compatible)"
+	default y
+	select GPIO
+	help
+	  Enable the AE103 GPIO driver. Five logical ports (GPIOA~E) over four
+	  physical bases (0x2800/0x2C00/0x3000/0x3400). 8-bit register access;
+	  GPIOD shares base 0x3000 with GPIOC via high-offset registers.
+	  Poll-only for now; interrupt mode lands together with the AE103
+	  INTC driver.
 
 endif # SOC_AE103_NTO

@@ -1,0 +1,43 @@
+# Copyright (c) 2026 Sparkle Silicon Technology Corp., Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  SPK AE103 GPIO (DesignWare DW_apb_gpio compatible)
+
+  Five logical ports (GPIOA~E) map to four physical bases:
+    GPIOA(32) 0x2800   GPIOB(32) 0x2C00
+    GPIOC(16) 0x3000   GPIOD(9) 0x3000 (high-offset GPIO2_DR2)
+    GPIOE(24) 0x3400
+
+  GPIOC and GPIOD share base 0x3000; GPIOD lives in the high-offset
+  registers (DR2@0x0C / DDR2@0x10 / EXT2@0x54), so its `reg` points at
+  0x300c (the DR2 location) to keep the unit-address unique.
+
+  `spksilicon,port` selects the logical port (0..4); the driver looks up
+  base + DR/DDR/EXT offsets from an internal per-port table, so `reg` is
+  informational and not used for offset computation.
+
+  Interrupt mode is not wired yet — the AE103 INTC driver has not landed.
+  This driver is poll-only for now.
+
+compatible: "spksilicon,ae103-gpio"
+
+include: [base.yaml, gpio-controller.yaml]
+
+properties:
+  reg:
+    required: true
+
+  spksilicon,port:
+    type: int
+    required: true
+    enum: [0, 1, 2, 3, 4]
+    description: |
+      Logical port index: 0=GPIOA, 1=GPIOB, 2=GPIOC, 3=GPIOD, 4=GPIOE.
+
+  "#gpio-cells":
+    const: 2
+
+gpio-cells:
+  - pin
+  - flags

@@ -9,7 +9,7 @@
  * CONFIG_NUCLEI_N100_SPECIAL 宏控，避免散落各处；不通过 build 命令
  * 外部注入任何宏（见 build.sh / Kconfig）。
  *
- * 来源：ecfw-zephyr/misc/startup.H 的 CSR 定义 + SPK32A20X用户手册_v0.5.9
+ * 来源：ecfw-zephyr/misc/startup.h 的 CSR 定义 + SPK32A20X用户手册_v0.5.9
  * 4.10 节 CSR 总表（表 4-3，权威清单）。芯片仍在研发中，部分寄存器语义
  * 待验证，已用 [待验证] 标注；纠错结论应记录到 MIGRATION.md，不跟随在研
  * 资料直接改动运行代码。
@@ -31,7 +31,7 @@
 /*
  * ── CLIC 向量中断扩展（标准 RISC-V 无）─────────────────────────────
  * 注意：除 mtvt(0x307) 外，下列扩展 CSR 均未收录于手册 4.10 CSR 总表
- * （表 4-3），仅来自 startup.H。结合 N100"不支持嵌套/尾链"，疑已精简，
+ * （表 4-3），仅来自 startup.h。结合 N100"不支持嵌套/尾链"，疑已精简，
  * 待实测确认（见 BUILD.md 7.9 待验证项）。
  */
 #define N100_CSR_MTVT           0x307  /* 中断向量表基址；N100 只读、固定 0x30800（手册 4.10.3.10） */
