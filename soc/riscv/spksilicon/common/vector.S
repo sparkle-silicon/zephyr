@@ -9,7 +9,7 @@
  * 0x30800，mtvt 固定指向）。
  *
  * 本文件是 spksilicon 家族内所有基于 N100 内核的 AE 系列
- * （AE101/AE102/AE103/AE201/AE203…）共享的内核公共层代码，由
+ * （AE101/AE102/AE201/AE203…）共享的内核公共层代码，由
  * CONFIG_NUCLEI_N100_SPECIAL 宏控切换：
  *   - N100 特化：不写 mtvec（写了也无害但误导），依赖 ROM 拷入的向量表。
  *   - 标准 RISC-V：写 mtvec 指向 zephyr 统一异常入口 _isr_wrapper，

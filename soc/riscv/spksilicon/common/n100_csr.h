@@ -5,7 +5,7 @@
  * Nuclei N100 内核特化 CSR 集中管理 + 与标准 RISC-V 的差异标注。
  *
  * 本文件是 spksilicon 家族内所有基于 N100 内核的 AE 系列
- * （AE101/AE102/AE103/AE201/AE203…）共享的内核公共层头文件，由
+ * （AE101/AE102/AE201/AE203…）共享的内核公共层头文件，由
  * CONFIG_NUCLEI_N100_SPECIAL 宏控，避免散落各处；不通过 build 命令
  * 外部注入任何宏（见 build.sh / Kconfig）。
  *

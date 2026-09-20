@@ -3,10 +3,10 @@
  * SPDX-License-Identifier: Apache-2.0
  *
  * @file spi_flash.c
- * @brief AE103 外部 SPI NOR Flash 驱动（空函数模板）。
+ * @brief AE201 外部 SPI NOR Flash 驱动（空函数模板）。
  *
  * 本文件是 SPI Flash 驱动的骨架。所有函数在 Flash 擦写期间执行，必须搬到
- * RAM（AE103 ICACHE 现场调度 SPIF 命中 → 取指死锁，见 configs/base.conf）。
+ * RAM（AE201 ICACHE 现场调度 SPIF 命中 → 取指死锁，见 configs/base.conf）。
  *
  * 落地步骤（待驱动实现后）：
  *   1. 去掉 ecfw-zephyr/configs/base.conf 里注释的 CONFIG_CODE_DATA_RELOCATION=y；

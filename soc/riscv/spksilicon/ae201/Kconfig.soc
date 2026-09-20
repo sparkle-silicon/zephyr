@@ -2,11 +2,11 @@
 # SPDX-License-Identifier: Apache-2.0
 
 choice
-prompt "SPK AE103 implementation"
-depends on SOC_SERIES_SPK_AE103X
+prompt "SPK AE201 implementation"
+depends on SOC_SERIES_SPK_AE201X
 
-config SOC_AE103_NTO
-	bool "SPK AE103 NTO (single silicon for all AE201X SKUs)"
+config SOC_AE201
+	bool "SPK AE201 (single silicon for all AE201X SKUs)"
 	select RISCV
 	select ATOMIC_OPERATIONS_C
 	select INCLUDE_RESET_VECTOR
@@ -16,7 +16,7 @@ config SOC_AE103_NTO
 	select RISCV_ISA_EXT_ZIFENCEI
 	select RISCV_SOC_INTERRUPT_INIT
 	help
-	  SPK32AE103NTO silicon. ISA is rv32ec / ilp32e:
+	  SPK32AE201 silicon (internal test name SPK32AE103NTO). ISA is rv32ec / ilp32e:
 	  - No M extension: multiply/divide done in software.
 	  - No A extension: atomics use gcc builtins (ATOMIC_OPERATIONS_BUILTIN).
 	  AE201E / AE201N / AE201X are derived via eFUSE and share this SoC symbol.
@@ -29,32 +29,32 @@ config SOC_AE103_NTO
 
 endchoice
 
-if SOC_AE103_NTO
+if SOC_AE201
 
-choice AE103_BOOT_MODE
-	prompt "AE103 boot flow"
-	default AE103_BOOT_DEFAULT
+choice AE201_BOOT_MODE
+	prompt "AE201 boot flow"
+	default AE201_BOOT_DEFAULT
 	help
-	  选择复位后（多 hart / 固件镜像）启动流程。由 ae103_boot.c 的
-	  ae103_boot_secondary_core() 读取并执行对应分支。
+	  选择复位后（多 hart / 固件镜像）启动流程。由 ae201_boot.c 的
+	  ae201_boot_secondary_core() 读取并执行对应分支。
 
-config AE103_BOOT_DEFAULT
+config AE201_BOOT_DEFAULT
 	bool "Default single-image boot"
 	help
 	  单镜像启动：hart 0 为引导核，其余 hart 进入低功耗 wfi 等待
-	  （对应 zephyr 默认 boot_secondary_core 行为，但可被 AE103 特化）。
+	  （对应 zephyr 默认 boot_secondary_core 行为，但可被 AE201 特化）。
 
-config AE103_BOOT_DUAL
+config AE201_BOOT_DUAL
 	bool "Dual-image (A/B) boot"
 	help
 	  双镜像启动：依据 FlashInfo 的 A/B 标记选择主备镜像，加载失败
-	  回退到另一镜像。业务逻辑需在 ae103_boot.c 中补充。
+	  回退到另一镜像。业务逻辑需在 ae201_boot.c 中补充。
 
-config AE103_BOOT_RECOVERY
+config AE201_BOOT_RECOVERY
 	bool "Backup/recovery boot"
 	help
 	  备份/恢复启动：主镜像损坏时从备份区恢复并启动。业务逻辑需在
-	  ae103_boot.c 中补充。
+	  ae201_boot.c 中补充。
 
 endchoice
 
@@ -65,7 +65,7 @@ choice SPK_AE201_SKU
 	  AE201 系列芯片型号（eFUSE 决定），决定主频硬件上限：
 	    - AE201N / AE201B：40 MHz（分频 div 下限 1）
 	    - AE201E：80 MHz（分频 div 下限 0）
-	  主频分频 div 下限据此放开（见 clock.h AE103_CLOCK_DIV_MIN）。
+	  主频分频 div 下限据此放开（见 clock.h AE201_CLOCK_DIV_MIN）。
 
 config AE201_SKU_N
 	bool "AE201N (40 MHz)"
@@ -85,7 +85,7 @@ config AE201_CLOCK_MAX_HZ
 	default 80000000 if AE201_SKU_E
 
 config WDOG_INIT
-	bool "AE103 early watchdog init (before C domain)"
+	bool "AE201 early watchdog init (before C domain)"
 	default n
 	help
 	  Call _WdogInit() from arch reset.S before z_prep_c — i.e. before BSS
@@ -95,9 +95,9 @@ config WDOG_INIT
 
 	  ⚠️ 寄存器操作待芯片资料确认（WDT 中断号 = 19，SYSCTL@0x30400 为复位域）。
 
-menu "AE103 compiler options"
+menu "AE201 compiler options"
 
-config AE103_OPT_FSIGNED_CHAR
+config AE201_OPT_FSIGNED_CHAR
 	bool "Compile with -fsigned-char"
 	default y
 	help
@@ -105,21 +105,21 @@ config AE103_OPT_FSIGNED_CHAR
 	  flag changes char semantics globally (kernel / libc / app). Aligns
 	  with original firmware common.mk (-fsigned-char).
 
-config AE103_OPT_MSAVE_RESTORE
+config AE201_OPT_MSAVE_RESTORE
 	bool "Compile with -msave-restore"
 	default y
 	help
 	  RISC-V tail-call shared save/restore routines to reduce code size.
 	  Aligns with original firmware common.mk (-msave-restore).
 
-config AE103_OPT_FNO_UNROLL_LOOPS
+config AE201_OPT_FNO_UNROLL_LOOPS
 	bool "Compile with -fno-unroll-loops"
 	default y
 	help
 	  Disable loop unrolling to reduce code size. Aligns with original
 	  firmware common.mk (-fno-unroll-loops).
 
-config AE103_OPT_WEXTRA
+config AE201_OPT_WEXTRA
 	bool "Compile with -Wextra"
 	help
 	  Enable extra compiler warnings. Disabled by default (matches original
@@ -127,51 +127,51 @@ config AE103_OPT_WEXTRA
 
 endmenu
 
-config AE103_TIMER
-	bool "AE103 hardware timer driver"
+config AE201_TIMER
+	bool "AE201 hardware timer driver"
 	default y
 	help
-	  Enable the AE103 hardware timer driver (4 x 16-bit down-counters).
-	  This is the reference driver template for every AE103 peripheral
+	  Enable the AE201 hardware timer driver (4 x 16-bit down-counters).
+	  This is the reference driver template for every AE201 peripheral
 	  driver that follows (INTC, UART, GPIO, ...).
 
-config AE103_TIMER_INIT_PRIORITY
-	int "AE103 timer driver init priority"
+config AE201_TIMER_INIT_PRIORITY
+	int "AE201 timer driver init priority"
 	default 50
-	depends on AE103_TIMER
+	depends on AE201_TIMER
 	help
-	  POST_KERNEL initialization priority of the AE103 timer driver.
+	  POST_KERNEL initialization priority of the AE201 timer driver.
 
-config AE103_UART
-	bool "AE103 UART driver (16550-compatible)"
+config AE201_UART
+	bool "AE201 UART driver (16550-compatible)"
 	default y
 	depends on SERIAL
 	select SERIAL_HAS_DRIVER
 	help
-	  Enable the AE103 UART driver. Six 16550-compatible ports:
-	  UARTA/B oversample 16x (standard), UART0~3 oversample 8x
+	  Enable the AE201 UART driver. Four 16550-compatible ports:
+	  UARTA/B oversample 16x (standard), UART0/1 oversample 8x
 	  (non-standard). Poll-only for now; interrupt-driven mode lands
-	  together with the AE103 INTC driver. Init priority follows the
+	  together with the AE201 INTC driver. Init priority follows the
 	  standard CONFIG_SERIAL_INIT_PRIORITY (PRE_KERNEL_1), like ns16550.
 
-config AE103_SPI_FLASH
-	bool "AE103 external SPI NOR Flash driver"
+config AE201_SPI_FLASH
+	bool "AE201 external SPI NOR Flash driver"
 	default n
 	help
-	  Enable the AE103 external SPI NOR Flash driver. 当前为空函数模板，
-	  用于打通 CODE_DATA_RELOCATION 链路（AE103 ICACHE 现场调度 SPIF 命中，
+	  Enable the AE201 external SPI NOR Flash driver. 当前为空函数模板，
+	  用于打通 CODE_DATA_RELOCATION 链路（AE201 ICACHE 现场调度 SPIF 命中，
 	  Flash 擦写期间驱动若 XIP 执行会取指死锁，必须搬 RAM 运行）。
 	  待 SPIF 控制器寄存器与 Flash 型号确认后填充实现。
 
-config AE103_GPIO
-	bool "AE103 GPIO driver (DW_apb_gpio compatible)"
+config AE201_GPIO
+	bool "AE201 GPIO driver (DW_apb_gpio compatible)"
 	default y
 	select GPIO
 	help
-	  Enable the AE103 GPIO driver. Five logical ports (GPIOA~E) over four
+	  Enable the AE201 GPIO driver. Five logical ports (GPIOA~E) over four
 	  physical bases (0x2800/0x2C00/0x3000/0x3400). 8-bit register access;
 	  GPIOD shares base 0x3000 with GPIOC via high-offset registers.
-	  Poll-only for now; interrupt mode lands together with the AE103
+	  Poll-only for now; interrupt mode lands together with the AE201
 	  INTC driver.
 
-endif # SOC_AE103_NTO
+endif # SOC_AE201

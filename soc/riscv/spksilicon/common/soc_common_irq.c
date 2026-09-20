@@ -156,7 +156,7 @@ void z_riscv_irq_priority_set(unsigned int irq, unsigned int prio, uint32_t flag
 
 #if defined(CONFIG_RISCV_SOC_INTERRUPT_INIT)
 /*kconfig:
-select RISCV_SOC_INTERRUPT_INIT#要 SOC_AE103_NTO 被选中，这个选项就被强制打开，不可在 menuconfig
+select RISCV_SOC_INTERRUPT_INIT#要 SOC_AE201 被选中，这个选项就被强制打开，不可在 menuconfig
   里关掉。
 
 config RISCV_SOC_INTERRUPT_INIT

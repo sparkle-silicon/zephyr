@@ -1,11 +1,11 @@
 # Copyright (c) 2026 Sparkle Silicon Technology Corp., Ltd.
 # SPDX-License-Identifier: Apache-2.0
 
-config SOC_SERIES_SPK_AE103X
-	bool "SPK AE103X series (AE201X)"
+config SOC_SERIES_SPK_AE201X
+	bool "SPK AE201X series"
 	select SOC_FAMILY_SPKSILICON
 	help
-	  SPK AE103 silicon series, formally named AE201X.
-	  Internal test names are AE103 / AE103FM / AE103NTO; product SKUs
+	  SPK AE201X silicon series (formal name).
+	  Internal test numbers/names were AE103 / AE103FM / AE103NTO; product SKUs
 	  AE201E / AE201N / AE201X(TBD) are derived from the same silicon
 	  via eFUSE configuration.

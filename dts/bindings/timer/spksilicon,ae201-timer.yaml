@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 description: |
-  SPK AE103 hardware timer
+  SPK AE201 hardware timer
 
   Four independent 16-bit down-counters at one register block. Each channel
   occupies 0x14 bytes:
@@ -13,7 +13,7 @@ description: |
     TEOI +0x0C  end-of-interrupt clear
     TIS  +0x10  interrupt status (bit0)
 
-compatible: "spksilicon,ae103-timer"
+compatible: "spksilicon,ae201-timer"
 
 include: base.yaml
 

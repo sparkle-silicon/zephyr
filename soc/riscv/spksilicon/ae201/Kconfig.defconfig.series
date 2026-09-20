@@ -1,12 +1,12 @@
 # Copyright (c) 2026 Sparkle Silicon Technology Corp., Ltd.
 # SPDX-License-Identifier: Apache-2.0
 
-if SOC_SERIES_SPK_AE103X
+if SOC_SERIES_SPK_AE201X
 
 config SOC_SERIES
-	default "ae103"
+	default "ae201"
 
-# EC core clock 的 Hz 单一事实源 = dts 的 cpu0 clock-frequency（ae103_nto.dts）。
+# EC core clock 的 Hz 单一事实源 = dts 的 cpu0 clock-frequency（ae201_nto.dts）。
 # 主频 = 80M / FlashInfo.MainFrequency（分频数 div），div 由 clock-frequency 反推
 # （见 ecfw-zephyr/misc/flash_info.h 的 FLASH_INFO_MAIN_FREQ_DEFAULT）。BootROM 按
 # FlashInfo 配好 CLKDIV_OSC80M（硬件限制时 clamp，如 AE201N 型号最高 40M）。
@@ -18,7 +18,7 @@ config SYS_CLOCK_HW_CYCLES_PER_SEC
 config NUM_IRQS
 	default 104
 
-# AE103X 系列为单核 N100（mhartid 恒 0，仅单 Hart 集成），MP_MAX_NUM_CPUS
+# AE201X 系列为单核 N100（mhartid 恒 0，仅单 Hart 集成），MP_MAX_NUM_CPUS
 # 恒定为 1。在此 SoC/series 层固定默认值，客户在 board/应用层无需配置。
 # （如需彻底锁定禁止改大，可追加 range 1 1；当前仅设 default，保留灵活性。）
 config MP_MAX_NUM_CPUS
@@ -27,4 +27,4 @@ config MP_MAX_NUM_CPUS
 config RISCV_SOC_INTERRUPT_INIT
 	default y
 
-endif # SOC_SERIES_SPK_AE103X
+endif # SOC_SERIES_SPK_AE201X

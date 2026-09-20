@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 description: |
-  SPK AE103 GPIO (DesignWare DW_apb_gpio compatible)
+  SPK AE201 GPIO (DesignWare DW_apb_gpio compatible)
 
   Five logical ports (GPIOA~E) map to four physical bases:
     GPIOA(32) 0x2800   GPIOB(32) 0x2C00
@@ -17,10 +17,10 @@ description: |
   base + DR/DDR/EXT offsets from an internal per-port table, so `reg` is
   informational and not used for offset computation.
 
-  Interrupt mode is not wired yet — the AE103 INTC driver has not landed.
+  Interrupt mode is not wired yet — the AE201 INTC driver has not landed.
   This driver is poll-only for now.
 
-compatible: "spksilicon,ae103-gpio"
+compatible: "spksilicon,ae201-gpio"
 
 include: [base.yaml, gpio-controller.yaml]
 
