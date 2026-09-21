@@ -12,7 +12,7 @@
  *   - 寄存器偏移宏 → AE201_SYSCTL_MODEN0_OFFSET（原名 SYSCTL_MODEN0_OFFSET）
  *   - 位域掩码     → AE201_SYSCTL_MODEN0_GPIO_EN（原名 SYSCTL_MODEN0_GPIO_EN）
  *   - 对外函数     → ae201_sysctl_*（蛇形）
- * 便于与 SPK32AE201NTO/Firmware 固件库交叉对照维护。
+ * 便于与 SPK32AE201/Firmware 固件库交叉对照维护。
  *
  * ⚠️ 无 LOG 依赖：本模块可能被 wdt.c 的 _WdogInit 早期路径（BSS 清零前）
  *    经 ae201_sysctl_clock_div_get 间接调用，故全部实现保持纯 MMIO 读写，

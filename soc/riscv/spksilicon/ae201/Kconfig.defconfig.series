@@ -6,7 +6,7 @@ if SOC_SERIES_SPK_AE201X
 config SOC_SERIES
 	default "ae201"
 
-# EC core clock 的 Hz 单一事实源 = dts 的 cpu0 clock-frequency（ae201_nto.dts）。
+# EC core clock 的 Hz 单一事实源 = dts 的 cpu0 clock-frequency（ae201.dts）。
 # 主频 = 80M / FlashInfo.MainFrequency（分频数 div），div 由 clock-frequency 反推
 # （见 ecfw-zephyr/misc/flash_info.h 的 FLASH_INFO_MAIN_FREQ_DEFAULT）。BootROM 按
 # FlashInfo 配好 CLKDIV_OSC80M（硬件限制时 clamp，如 AE201N 型号最高 40M）。

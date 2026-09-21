@@ -25,7 +25,7 @@ LOG_MODULE_REGISTER(ae201_clock, LOG_LEVEL_WRN);
 /* ================= 主频初始化 ======================================= */
 void ae201_clock_init(void)
 {
-	/* 主频目标 Hz 单一事实源 = dts cpu0 clock-frequency（ae201_nto.dts）。
+	/* 主频目标 Hz 单一事实源 = dts cpu0 clock-frequency（ae201.dts）。
 	 * CLKDIV_OSC80M 是寄存器值，主频 = 80M / (div + 1)，故
 	 * div = 80M / hz - 1（= FlashInfo.MainFrequency - 1）。早期（BSS 前）
 	 * 不能走 ae201_clock_div_set（通知表在 BSS），直接纯 MMIO 写。

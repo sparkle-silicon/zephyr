@@ -13,7 +13,7 @@
  *   3. Kconfig      CONFIG_AE201_TIMER (soc/.../ae201/Kconfig.soc)
  *   4. 驱动本体     本文件 (DEVICE_DT_INST_DEFINE + API)
  *   5. 编译注册      soc/riscv/spksilicon/ae201/CMakeLists.txt
- *   6. 使能         boards/riscv/ae201_nto/ae201_nto_defconfig
+ *   6. 使能         boards/riscv/ae201/ae201_defconfig
  *
  * 硬件：4 路 16-bit 递减计数器 @ 0x1800，每路 stride 0x14。
  * 注：本驱动当前只做基础读写（不含中断）。中断需 INTC 驱动落地后，
@@ -49,7 +49,7 @@ LOG_MODULE_REGISTER(ae201_timer, LOG_LEVEL_INF);
 /* TIS 位域 */
 #define AE201_TIMER_TIS_INT     BIT(0) /* 1 = 中断挂起 */
 
-struct ae201_timer_config {
+struct ae201_timer_config{
 	uintptr_t base;
 };
 
@@ -81,7 +81,8 @@ static int ae201_timer_init(const struct device *dev)
 	const struct ae201_timer_config *cfg = dev->config;
 
 	/* 上电自检：停止全部 4 路，确认寄存器区可访问。 */
-	for (uint8_t ch = 0U; ch < AE201_TIMER_CH_COUNT; ch++) {
+	for (uint8_t ch = 0U; ch < AE201_TIMER_CH_COUNT; ch++)
+	{
 		sys_write8(0U, timer_ch_base(dev, ch) + AE201_TIMER_TCR);
 	}
 
@@ -98,7 +99,8 @@ void ae201_timer_start(const struct device *dev, uint8_t ch, uint16_t load, bool
 	uintptr_t base = timer_ch_base(dev, ch);
 	uint8_t tcr = AE201_TIMER_TCR_EN;
 
-	if (loop) {
+	if (loop)
+	{
 		tcr |= AE201_TIMER_TCR_LOOP;
 	}
 

@@ -6,7 +6,7 @@
  * @brief AE201 看门狗（WDT）驱动头文件 —— Synopsys DW_apb_wdt 兼容。
  *
  * 命名规则（对齐固件 AE_REG.H / KERNEL_WATCHDOG.H，加 AE201_ 前缀、保留
- * 原名尾部，便于与 SPK32AE201NTO/Firmware 交叉对照）：
+ * 原名尾部，便于与 SPK32AE201/Firmware 交叉对照）：
  *   - 寄存器偏移宏 → AE201_WDT_CR_OFFSET（原名 WDT_CR_OFFSET）
  *   - 位域/档位宏  → AE201_WDT_CR_EN / AE201_WDT_TORR_TOP_2G（原名 WDT_CR_EN / WDT_TORR_TOP_2G）
  *   - 对外函数     → ae201_wdt_*（蛇形，原名 WDT_Init / WDT_FeedDog / ...）

@@ -59,7 +59,7 @@
  * @note 首期只覆盖当前实际消费者（主频 + UART）。TMR0~3 的时钟源
  *       （高频/低频）待芯片资料确认后按需扩展。
  */
-enum ae201_clock_domain {
+enum ae201_clock_domain{
 	AE201_CLOCK_DOMAIN_OSC80M, /* 主频：CPU / WDT / 多数外设上游 */
 	AE201_CLOCK_DOMAIN_UART,   /* UART 波特率时钟 */
 
@@ -68,12 +68,12 @@ enum ae201_clock_domain {
 
 /** @brief 频率变更回调。@param domain 变更的时钟域 @param freq_hz 变更后频率。 */
 typedef void (*ae201_clock_change_cb)(enum ae201_clock_domain domain,
-				      uint32_t freq_hz);
+					  uint32_t freq_hz);
 
 /**
  * @brief 早期初始化主频（reset.S 的 _WdogInit 经此在 BSS 清零前配置 CLKDIV）。
  *
- * 主频目标 Hz 单一事实源 = dts cpu0 clock-frequency（ae201_nto.dts），
+ * 主频目标 Hz 单一事实源 = dts cpu0 clock-frequency（ae201.dts），
  * 寄存器值 div = AE201_CLOCK_SRC_HZ / clock-frequency - 1
  * （= FlashInfo.MainFrequency - 1）。早期路径（BSS 清零前）不能走
  * ae201_clock_div_set（其通知表在 BSS），故直接纯 MMIO 写 CLKDIV_OSC80M、
