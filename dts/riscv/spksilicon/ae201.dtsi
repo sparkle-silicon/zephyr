@@ -54,7 +54,7 @@
 		};
 
 		/*
-		 * SPK hardware timer: 4 x 16-bit down-counters @ 0x1800.
+		 * SPK32AE hardware timer: 4 x 16-bit down-counters @ 0x1800.
 		 * 0x14 bytes per channel => 0x50 total.
 		 */
 		timer0: timer@1800 {

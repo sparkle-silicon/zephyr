@@ -41,13 +41,13 @@
  * 边界，关联 BootROM AE_INIT.c 主频配置（型号主频上限见 ec103nto_efuse_260127.xlsx）：
  *   - 上限 63：最低主频 80M/(63+1) = 1.25M（IC 文档 + 流片实测的最低值，6 bit）。
  *     div > 31（主频 < 2.5M）属低频，写分频时 LOG_WRN 提示（见 AE201_CLOCK_DIV_WARN）
- *   - 下限按型号放开（Kconfig choice SPK_AE201_SKU）：AE201N/B=40M（div>=1），
+ *   - 下限按型号放开（Kconfig choice SPK32AE201_SKU）：AE201N/B=40M（div>=1），
  *     AE201E=80M（div>=0），见下方 AE201_CLOCK_DIV_MIN 定义。
  */
 #define AE201_CLOCK_DIV_MAX 63
 /* div 超过此值（主频 < 2.5M）属低频，写主频分频时提示 warning。 */
 #define AE201_CLOCK_DIV_WARN 31
-/* 最高主频上限，按型号由 Kconfig choice SPK_AE201_SKU 决定（值取
+/* 最高主频上限，按型号由 Kconfig choice SPK32AE201_SKU 决定（值取
  * CONFIG_AE201_CLOCK_MAX_HZ）：AE201N/B=40M，AE201E=80M。
  * 强制 (int32_t) 避免与 clamp 的 int32_t div 比较时发生无符号提升（否则 div=-1
  * 下溢时 < 判断失效，漏掉下限保护）。 */

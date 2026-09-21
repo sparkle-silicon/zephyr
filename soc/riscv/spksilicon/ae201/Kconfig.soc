@@ -2,11 +2,11 @@
 # SPDX-License-Identifier: Apache-2.0
 
 choice
-prompt "SPK AE201 implementation"
-depends on SOC_SERIES_SPK_AE201X
+prompt "SPK32AE201 implementation"
+depends on SOC_SERIES_SPK32AE201X
 
 config SOC_AE201
-	bool "SPK AE201 (single silicon for all AE201X SKUs)"
+	bool "SPK32AE201 (single silicon for all AE201X SKUs)"
 	select RISCV
 	select ATOMIC_OPERATIONS_C
 	select INCLUDE_RESET_VECTOR
@@ -58,7 +58,7 @@ config AE201_BOOT_RECOVERY
 
 endchoice
 
-choice SPK_AE201_SKU
+choice SPK32AE201_SKU
 	prompt "AE201 SKU (main clock upper limit)"
 	default AE201_SKU_N
 	help

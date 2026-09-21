@@ -1,7 +1,7 @@
 # Copyright (c) 2026 Sparkle Silicon Technology Corp., Ltd.
 # SPDX-License-Identifier: Apache-2.0
 
-if SOC_SERIES_SPK_AE201X
+if SOC_SERIES_SPK32AE201X
 
 config SOC_SERIES
 	default "ae201"
@@ -27,4 +27,4 @@ config MP_MAX_NUM_CPUS
 config RISCV_SOC_INTERRUPT_INIT
 	default y
 
-endif # SOC_SERIES_SPK_AE201X
+endif # SOC_SERIES_SPK32AE201X

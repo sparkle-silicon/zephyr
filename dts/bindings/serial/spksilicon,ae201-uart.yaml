@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 description: |
-  SPK AE201 UART
+  SPK32AE201 UART
 
   16550-compatible UART with an AE201-specific baud-rate divider:
   UART0~3 oversample 8x (non-standard), UARTA/B oversample 16x (standard).

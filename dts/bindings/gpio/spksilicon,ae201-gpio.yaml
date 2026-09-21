@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 description: |
-  SPK AE201 GPIO (DesignWare DW_apb_gpio compatible)
+  SPK32AE201 GPIO (DesignWare DW_apb_gpio compatible)
 
   Five logical ports (GPIOA~E) map to four physical bases:
     GPIOA(32) 0x2800   GPIOB(32) 0x2C00

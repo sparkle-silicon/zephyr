@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 description: |
-  SPK AE201 hardware timer
+  SPK32AE201 hardware timer
 
   Four independent 16-bit down-counters at one register block. Each channel
   occupies 0x14 bytes:
