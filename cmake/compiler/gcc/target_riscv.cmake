@@ -88,11 +88,5 @@ if (CMAKE_C_COMPILER_VERSION VERSION_GREATER_EQUAL 12.0.0)
   endif()
 endif()
 
-if(CONFIG_RISCV_GP)
-  # 让编译器把 <= RISCV_SMALL_DATA_LIMIT 字节的全局/静态数据放进 .sdata/.sbss，
-  # 链接器 relax 成 gp 相对寻址（单指令访问）。默认 0 = 不启用（数据留在 .data/.bss）。
-  list(APPEND TOOLCHAIN_C_FLAGS -msmall-data-limit=${CONFIG_RISCV_SMALL_DATA_LIMIT})
-endif()
-
 list(APPEND TOOLCHAIN_C_FLAGS -mabi=${riscv_mabi} -march=${riscv_march})
 list(APPEND TOOLCHAIN_LD_FLAGS NO_SPLIT -mabi=${riscv_mabi} -march=${riscv_march})

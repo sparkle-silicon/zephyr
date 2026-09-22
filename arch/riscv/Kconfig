@@ -28,20 +28,6 @@ config RISCV_GP
 	  global pointer at program start or earlier than any instruction
 	  using GP relative addressing.
 
-config RISCV_SMALL_DATA_LIMIT
-	int "Small data threshold (bytes) for gp-relative addressing"
-	default 8
-	depends on RISCV_GP
-	help
-	  Globals/statics whose size is <= this value (bytes) are placed in
-	  .sdata/.sbss and addressed via the global pointer (gp) in a single
-	  instruction. Passed to the compiler as -msmall-data-limit=N.
-
-	  Larger values move more data into the gp window but risk exceeding
-	  the 12-bit signed offset range (+-2 KiB around __global_pointer$),
-	  which the linker rejects as a relaxation overflow. 8 is GCC's
-	  conventional default for RISC-V.
-
 config RISCV_ALWAYS_SWITCH_THROUGH_ECALL
 	bool "Do not use mret outside a trap handler context"
 	depends on MULTITHREADING
