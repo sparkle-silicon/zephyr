@@ -9,7 +9,7 @@
  * GPIO ...）的移植模板。它完整演示了 Zephyr 外设驱动的标准流程：
  *
  *   1. DT binding   dts/bindings/timer/spksilicon,ae201-timer.yaml
- *   2. DT node      dts/riscv/spksilicon/ae201.dtsi        (timer@1800)
+ *   2. DT node      dts/riscv/spksilicon/spk32spk32ae201.dtsi        (timer@1800)
  *   3. Kconfig      CONFIG_AE201_TIMER (soc/.../ae201/Kconfig.soc)
  *   4. 驱动本体     本文件 (DEVICE_DT_INST_DEFINE + API)
  *   5. 编译注册      soc/riscv/spksilicon/ae201/CMakeLists.txt
