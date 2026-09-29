@@ -294,19 +294,13 @@ void _WdogInit(void)
 	ae201_wdt_init_time(AE201_WDT_DEFAULT_MODE, AE201_WDT_DEFAULT_RPL, AE201_WDT_DEFAULT_MS);
 }
 #else
-// #define IS_VALID_FWDGT_PRESCALER(psc)                                          \
-// 	(((psc) == FWDGT_PSC_DIV4) || ((psc) == FWDGT_PSC_DIV8) ||             \
-// 	 ((psc) == FWDGT_PSC_DIV16) || ((psc) == FWDGT_PSC_DIV32) ||           \
-// 	 ((psc) == FWDGT_PSC_DIV64) || ((psc) == FWDGT_PSC_DIV128) ||          \
-// 	 ((psc) == FWDGT_PSC_DIV256))
+
 
 // #define FWDGT_INITIAL_TIMEOUT DT_INST_PROP(0, initial_timeout_ms)
 
 // #if (FWDGT_INITIAL_TIMEOUT <= 0)
 // #error Must be initial-timeout > 0
-// #elif (FWDGT_INITIAL_TIMEOUT >                                                 \
-// 	(FWDGT_PRESCALER_MAX * FWDGT_RELOAD_MAX * MSEC_PER_SEC /               \
-// 	CONFIG_GD32_LOW_SPEED_IRC_FREQUENCY))
+// #elif (FWDGT_INITIAL_TIMEOUT >                                                 (FWDGT_PRESCALER_MAX * FWDGT_RELOAD_MAX * MSEC_PER_SEC /               CONFIG_GD32_LOW_SPEED_IRC_FREQUENCY))
 // #error Must be initial-timeout <= (256 * 4095 * 1000 / GD32_LOW_SPEED_IRC_FREQUENCY)
 // #endif
 

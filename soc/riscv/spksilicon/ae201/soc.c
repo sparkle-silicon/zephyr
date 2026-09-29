@@ -89,7 +89,7 @@ static ALWAYS_INLINE uint8_t intcm_read8(uint8_t m, mem_addr_t offset)
 	else
 		return 0;
 }
-static ALWAYS_INLINE void intcm_write8(mem_addr_t offset, uint8_t val)
+static ALWAYS_INLINE void intcm_write8(uint8_t m, mem_addr_t offset, uint8_t val)
 {
 	if (m == 0)
 		intc0_write8(offset, val);
@@ -123,7 +123,7 @@ void soc_interrupt_init(void)
 		{
 			for (int n = ICTL_INTEN0_OFFSET; n < ICTL_INTEN_MAX_OFFSET; n++)
 			{
-				intcm_write8(m, n) = 0;
+				intcm_write8(m, n, 0);
 			}
 
 		}
