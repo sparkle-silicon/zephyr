@@ -46,3 +46,91 @@ int64_t z_impl_k_uptime_ticks(void)
 	return 0;
 }
 #endif
+#if defined(CONFIG_RISCV_SOC_INTERRUPT_INIT)
+#define AE201_INTC0_BASE_ADDR        0x1000UL
+#define AE201_INTC1_BASE_ADDR        0x1400UL
+#define AE201_ICTL0_BASE_ADDR        AE201_INTC0_BASE_ADDR
+#define AE201_ICTL1_BASE_ADDR        AE201_INTC1_BASE_ADDR
+#define AE201_INTC_OFFSET_MASK      0x3FF
+#define AE201_ICTL_OFFSET_MASK      AE201_INTC_OFFSET_MASK
+
+#if 1/* 采用 mask 的格式 */
+#define INTC0_REG_ADDR(offset)        	((AE201_INTC0_BASE_ADDR) + ((offset)&AE201_INTC_OFFSET_MASK))
+#define INTC1_REG_ADDR(offset)        	((AE201_INTC1_BASE_ADDR) + ((offset)&AE201_INTC_OFFSET_MASK))
+#else
+#define INTC0_REG_ADDR(offset)        	((AE201_INTC0_BASE_ADDR) + (offset))
+#define INTC1_REG_ADDR(offset)        	((AE201_INTC1_BASE_ADDR) + (offset))
+#endif
+#define ICTL0_REG_ADDR(offset) 		INTC0_REG_ADDR(offset)
+#define ICTL1_REG_ADDR(offset) 		INTC1_REG_ADDR(offset)
+
+static ALWAYS_INLINE uint8_t intc0_read8(mem_addr_t offset)
+{
+	return sys_read8(INTC0_REG_ADDR(offset));
+}
+static ALWAYS_INLINE uint8_t intc1_read8(mem_addr_t offset)
+{
+	return sys_read8(INTC1_REG_ADDR(offset));
+}
+static ALWAYS_INLINE void intc0_write8(mem_addr_t offset, uint8_t val)
+{
+	sys_write8((uint8_t)(val), INTC0_REG_ADDR(offset));
+}
+static ALWAYS_INLINE void intc1_write8(mem_addr_t offset, uint8_t val)
+{
+	sys_write8((uint8_t)(val), INTC1_REG_ADDR(offset));
+}
+static ALWAYS_INLINE uint8_t intcm_read8(uint8_t m, mem_addr_t offset)
+{
+	if (m == 0)
+		return intc0_read8(offset);
+	else if (m == 1)
+		return intc1_read8(offset);
+	else
+		return 0;
+}
+static ALWAYS_INLINE void intcm_write8(mem_addr_t offset, uint8_t val)
+{
+	if (m == 0)
+		intc0_write8(offset, val);
+	else if (m == 1)
+		intc1_write8(offset, val);
+}
+#define ICTL_INTEN0_OFFSET	0
+#define ICTL_INTEN1_OFFSET	1
+#define ICTL_INTEN2_OFFSET	2
+#define ICTL_INTEN3_OFFSET	3
+#define ICTL_INTEN4_OFFSET	4
+#define ICTL_INTEN5_OFFSET	5
+#define ICTL_INTEN6_OFFSET	6
+#define ICTL_INTEN7_OFFSET	7
+#define ICTL_INTEN_MAX_OFFSET	8
+
+void soc_interrupt_init(void)
+{
+	{//default(CPU INit)
+		/* ensure that all interrupts are disabled */
+		(void)arch_irq_lock();// csr_clear(mstatus, 0x00000008);
+
+		csr_write(0xBD1, 0);/*irqcie*/ // csr_write(mie, 0);
+		csr_write(0xBD0, 0);/*irqcip*/ // csr_write(mip, 0);
+	}
+
+	{//中断控制器(INTC)
+
+		/* Ensure interrupts of soc are disabled at default */
+		for (uint32_t m = 0; m < 2; m++)
+		{
+			for (int n = ICTL_INTEN0_OFFSET; n < ICTL_INTEN_MAX_OFFSET; n++)
+			{
+				intcm_write8(m, n) = 0;
+			}
+
+		}
+		/* Enable M-mode external interrupt */
+		csr_set(0xBD1, (1 << 30) | (1 << 31));//csr_set(mie, MIP_MEIP);
+
+	}
+
+}
+#endif
