@@ -20,7 +20,8 @@
  *      分频改写后通知订阅该域的模块重算（逐时钟域事件）
  *
  * ⚠️ 与 SYSCTL 驱动的边界：sl 层是「纯 MMIO、无全局变量、无 LOG」的早期
- *   路径安全模块（wdt.c 的 _WdogInit 在 BSS 清零前经 clock_div_get 间接调用）。
+ *   路径安全模块（wdt/ae201_wdt_init.c 的 _WdogInit 在 BSS 清零前经
+ *   clock_div_get 间接调用）。
  *   而通知表是全局状态（BSS 段），故通知机制落在本独立模块。freq_get()
  *   只读寄存器 + 宏计算（零全局符号），保持早期路径安全；通知表仅在
  *   register/div_set 的正常路径被访问。

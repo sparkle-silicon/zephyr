@@ -38,8 +38,8 @@ void ae201_clock_init(void)
 }
 
 #ifndef CONFIG_WDOG_INIT
-/* WDT 未开 → 主频没有 reset.S 的 _WdogInit 可挂（wdt.c 受 CONFIG_WDOG_INIT
- * 编译控制，整文件不编），改在早期 SYS_INIT 补配。须早于 UART driver
+/* WDT init 段未开 → 主频没有 reset.S 的 _WdogInit 可挂（ae201_wdt_init.c 受
+ * CONFIG_WDOG_INIT 编译控制，整文件不编），改在早期 SYS_INIT 补配。须早于 UART driver
  * （PRE_KERNEL_1 / CONFIG_SERIAL_INIT_PRIORITY=50），否则 UART 按错误的 80M
  * 算波特率。level=PRE_KERNEL_1 + CONFIG_KERNEL_INIT_PRIORITY_DEFAULT(40)
  * 保证先跑（40 < 50）。 */
@@ -72,7 +72,7 @@ SPIM/SPIS	2 speed
 PWM0-7/TACH0-3  12 div
 PECI		1 CLKDIV_PECI
 ADC		8 CLKDIV_OSC80M_ADC
-WDT		1 Feed Time
+WDT		1 Feed Time	✅ 已实现（ae201_wdt_clk_change_cb，驱动 init 时注册）
 SWUC		1 ?（无 CLKDIV，待确认）
 OWI(LEDC)	1 CLKDIV_OWI
 CEC		1 CLKDIV_CEC（HDMI 消费电子控制）
