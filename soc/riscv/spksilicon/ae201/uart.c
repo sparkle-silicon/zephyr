@@ -31,7 +31,7 @@ LOG_MODULE_REGISTER(ae201_uart, LOG_LEVEL_INF);
 
 #include "uart.h"
 #include "clock.h"   /* ae201_clock_freq_get（波特率时钟动态拉取） */
-#include "sysctl.h"  /* ae201_sysctl_pio_cfg_set / clock_enable（引脚复用 + 时钟门控） */
+#include "ae201_sysctl_sl.h"  /* ae201_sysctl_sl_pio_cfg_set / clock_enable（引脚复用 + 时钟门控） */
 
 static const struct ae201_uart_pin uart0_pins[] = {
 	{ 1U, 8U, 2U },   /* GPIOA24，UART0 TX */
@@ -148,11 +148,11 @@ static int ae201_uart_init(const struct device *dev)
 
 		for (uint32_t i = 0U; i < mux->pin_count; i++)
 		{
-			ae201_sysctl_pio_cfg_set(mux->pins[i].pio,
+			ae201_sysctl_sl_pio_cfg_set(mux->pins[i].pio,
 						 mux->pins[i].pin,
 						 mux->pins[i].func);
 		}
-		ae201_sysctl_clock_enable(mux->moden_mask, 0U);
+		ae201_sysctl_sl_clock_enable(mux->moden_mask, 0U);
 	}
 
 	/* 第 2 步：波特率 + 8N1（对齐固件 serial_config）。 */

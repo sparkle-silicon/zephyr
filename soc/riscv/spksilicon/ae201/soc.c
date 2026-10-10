@@ -10,12 +10,12 @@
 
 #include <zephyr/arch/riscv/csr.h>
 
-#include "sysctl.h"
+#include "ae201_sysctl_sl.h"
 
 void sys_arch_reboot(int type)
 {
 	/* 系统复位落点：置 SYSCTL.RST1.CHIP_RST，复位生效后不返回。 */
-	ae201_sysctl_system_reset();
+	ae201_sysctl_sl_system_reset();
 	ARG_UNUSED(type);
 }
 

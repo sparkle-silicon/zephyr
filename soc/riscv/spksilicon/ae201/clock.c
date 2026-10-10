@@ -20,7 +20,7 @@
 LOG_MODULE_REGISTER(ae201_clock, LOG_LEVEL_WRN);
 
 #include "clock.h"
-#include "sysctl.h"
+#include "ae201_sysctl_sl.h"
 
 /* ================= 主频初始化 ======================================= */
 void ae201_clock_init(void)
@@ -34,7 +34,7 @@ void ae201_clock_init(void)
 	uint32_t hz = DT_PROP(DT_NODELABEL(cpu0), clock_frequency);
 	uint8_t div = ae201_clock_div_clamp((int32_t)(AE201_CLOCK_SRC_HZ / hz - 1U));
 
-	ae201_sysctl_clock_div_set(AE201_SYSCTL_CLKDIV_OSC80M_OFFSET, div);
+	ae201_sysctl_sl_clock_div_set(AE201_SYSCTL_CLKDIV_OSC80M_OFFSET, div);
 }
 
 #ifndef CONFIG_WDOG_INIT
@@ -89,7 +89,7 @@ static ae201_clock_change_cb listeners[AE201_CLOCK_DOMAIN_COUNT][AE201_CLOCK_LIS
 /* ================= 域 → CLKDIV offset 映射 =========================== */
 /*
  * 用 switch 而非查表数组：freq_get 早期路径（BSS 清零前）安全，零全局符号。
- * offset 值对齐 sysctl.h 的 AE201_SYSCTL_CLKDIV_*_OFFSET。
+ * offset 值对齐 ae201_sysctl_sl.h 的 AE201_SYSCTL_CLKDIV_*_OFFSET。
  */
 static uint32_t domain_clkdiv_offset(enum ae201_clock_domain domain)
 {
@@ -108,7 +108,7 @@ static uint32_t domain_clkdiv_offset(enum ae201_clock_domain domain)
 uint32_t ae201_clock_freq_get(enum ae201_clock_domain domain)
 {
 	uint32_t main_freq = AE201_CLOCK_SRC_HZ /
-		(ae201_sysctl_clock_div_get(AE201_SYSCTL_CLKDIV_OSC80M_OFFSET) + 1U);
+		(ae201_sysctl_sl_clock_div_get(AE201_SYSCTL_CLKDIV_OSC80M_OFFSET) + 1U);
 
 	switch (domain)
 	{
@@ -117,7 +117,7 @@ uint32_t ae201_clock_freq_get(enum ae201_clock_domain domain)
 		case AE201_CLOCK_DOMAIN_UART:
 			/* UART = 主频 / (CLKDIV_UART + 1)，复位值 0 = 不分频。 */
 			return main_freq /
-				(ae201_sysctl_clock_div_get(AE201_SYSCTL_CLKDIV_UART_OFFSET) + 1U);
+				(ae201_sysctl_sl_clock_div_get(AE201_SYSCTL_CLKDIV_UART_OFFSET) + 1U);
 		default:
 			return 0U;
 	}
@@ -192,7 +192,7 @@ int ae201_clock_div_set(enum ae201_clock_domain domain, uint8_t div)
 		}
 	}
 
-	ae201_sysctl_clock_div_set(domain_clkdiv_offset(domain), div);
+	ae201_sysctl_sl_clock_div_set(domain_clkdiv_offset(domain), div);
 	clock_notify(domain);
 
 	return 0;

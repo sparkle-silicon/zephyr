@@ -30,7 +30,7 @@
 #include <zephyr/sys/util.h>            /* BIT/GENMASK/FIELD_PREP/FIELD_GET */
 #include <zephyr/types.h>               /* uint8_t/uint32_t */
 #include <zephyr/logging/log.h>
-// LOG_MODULE_REGISTER(ae201_wdt, LOG_LEVEL_WRN);/*CONFIG_WDT_LOG_LEVEL*/
+LOG_MODULE_REGISTER(ae201_wdt, LOG_LEVEL_WRN);/*CONFIG_WDT_LOG_LEVEL*/
 
 #include "clock.h"    /* ae201_clock_freq_get（主频拉取，早期路径纯 MMIO） */
 #include "wdt.h"
@@ -44,6 +44,52 @@
 #else
 #define WDT_REG_ADDR(offset)        	((AE201_WDT_BASE_ADDR) + (offset))
 #endif
+enum ae201_wdt_flag_cmd{
+	WDT_UNKNOW_FLAG = -1,
+	WDT_CLEAR_FLAG = 0,
+	WDT_GET_LOG_FLAG,
+	WDT_SET_LOG_LOCK_FLAG,
+	WDT_SET_LOG_UNLOCK_FLAG,
+	WDT_FLAG_MAX,
+};
+typedef union ae201_wdt_flag{
+	uint8_t byte;
+	struct{
+		uint8_t log_unlock : 1;
+		uint8_t reserved : 7;
+	}bit;
+}ae201_wdt_flag;
+
+uint32_t ae201_wdt_flag_function(enum ae201_wdt_flag_cmd cmd)
+{
+	uint32_t ret = 0;
+	static ae201_wdt_flag flag = { .byte = 0 };
+	switch (cmd)
+	{
+		case WDT_UNKNOW_FLAG:
+			ret = -1;
+			break;
+		case WDT_CLEAR_FLAG:
+			flag.byte = 0;
+			ret = flag.byte;
+			break;
+		case WDT_GET_LOG_FLAG:
+			ret = flag.bit.log_unlock;
+			break;
+		case WDT_SET_LOG_LOCK_FLAG:
+			flag.bit.log_unlock = false;
+			ret = flag.bit.log_unlock;
+			break;
+		case WDT_SET_LOG_UNLOCK_FLAG:
+			flag.bit.log_unlock = true;
+			ret = flag.bit.log_unlock;
+			break;
+		case WDT_FLAG_MAX:default:
+			ret = -2;
+			break;
+	}
+	return ret;
+}
 
 static ALWAYS_INLINE uint8_t wdt_read8(mem_addr_t offset)
 {
@@ -203,7 +249,7 @@ void ae201_wdt_feed(void)
 
 	if (wdt_error_cnt >= AE201_WDT_FEEDDOG_TIMEOUT)
 	{
-		// LOG_ERR("WDT: Feed Fail\n");
+		if (ae201_wdt_flag_function(WDT_GET_LOG_FLAG) == true)LOG_ERR("WDT: Feed Fail\n");
 	}
 }
 
@@ -248,7 +294,7 @@ void ae201_wdt_init_count(uint8_t mode, uint8_t rpl, uint32_t count)
 		}
 		else
 		{
-			// LOG_WRN("WDT: Count Warring\n");
+			if (ae201_wdt_flag_function(WDT_GET_LOG_FLAG) == true)LOG_WRN("WDT: Count Warring\n");
 			break;/* 超过阈值了 */
 		}
 	}
@@ -291,6 +337,7 @@ void _WdogInit(void)
 	/* 先配主频（BSS 前纯 MMIO），WDT 随后按新主频算超时 count —— 保证主频
 	 * 配置与 WDT 时间同步。BootROM 不强制切主频，Zephyr 需在此自行配置。 */
 	ae201_clock_init();//CONFIG_WDOG_INIT没生效
+	ae201_wdt_flag_function(WDT_CLEAR_FLAG);/*WDT_SET_LOG_LOCK_FLAG:禁止LOG打印(还没初始化)*/
 	ae201_wdt_init_time(AE201_WDT_DEFAULT_MODE, AE201_WDT_DEFAULT_RPL, AE201_WDT_DEFAULT_MS);
 }
 #else
@@ -345,13 +392,13 @@ void _WdogInit(void)
 // #if CONFIG_GD32_DBG_SUPPORT
 // 		dbg_periph_enable(DBG_FWDGT_HOLD);
 // #else
-// 		LOG_ERR("Debug support not enabled");
+// 		if (ae201_wdt_flag_function(WDT_GET_LOG_FLAG) == true)LOG_ERR("Debug support not enabled");
 // 		return -ENOTSUP;
 // #endif
 // 	}
 
 // 	if ((options & WDT_OPT_PAUSE_IN_SLEEP) != 0U) {
-// 		LOG_ERR("WDT_OPT_PAUSE_IN_SLEEP not supported");
+// 		if (ae201_wdt_flag_function(WDT_GET_LOG_FLAG) == true)LOG_ERR("WDT_OPT_PAUSE_IN_SLEEP not supported");
 // 		return -ENOTSUP;
 // 	}
 

@@ -18,12 +18,14 @@ endif()
 
 zephyr_sources(soc.c)
 
-# 基础模块：时钟门控/复位/分频/引脚复用。soc.c 的 sys_arch_reboot 与
-# wdt.c 的 _WdogInit 路径无条件依赖，故不设 Kconfig 开关、始终编译。
-zephyr_sources(sysctl.c)
+# 基础模块 SYSCTL（时钟门控/复位/分频/引脚复用）已迁出本目录，改由父仓库
+# ecfw-library/spksilicon/spk32ae/ae201/{ll,sl,hal}/ 提供，编译登记在
+# configs/spksilicon/spk32ae/ae201/CMakeLists.txt。本目录不再持有其源文件；
+# 引用方（soc.c / wdt.c / gpio.c / clock.c / uart.c）现通过 ae201_sysctl_sl.h 使用。
 
 # 时钟域管理：主频单一事实源 + 频率拉取 + 变更通知。wdt.c/uart.c 依赖
-# ae201_clock_freq_get（早期路径纯 MMIO），故与 sysctl 同列无条件编译。
+# ae201_clock_freq_get（早期路径纯 MMIO），与已迁出的 SYSCTL 同属「无条件
+# 编译」之列，故这里不设 Kconfig 开关。
 zephyr_sources(clock.c)
 
 # 可控 secondary-core / 多镜像启动流程（AE201_BOOT_MODE 宏控）。

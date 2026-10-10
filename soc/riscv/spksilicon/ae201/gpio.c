@@ -24,7 +24,7 @@
 LOG_MODULE_REGISTER(ae201_gpio, LOG_LEVEL_INF);
 
 #include "gpio.h"
-#include "sysctl.h"
+#include "ae201_sysctl_sl.h"
 
 #define DT_DRV_COMPAT spksilicon_ae201_gpio
 
@@ -80,16 +80,16 @@ static void gpio_pin_mux_gpio(uint32_t port, uint32_t pin)
 		/* GPIOA/B/C → PIO0/1 或 PIO2/3 或 PIO4，每 16 pin 换一个 PIO */
 		uint32_t pio = port * 2U + ((pin >= 16U) ? 1U : 0U);
 
-		ae201_sysctl_pio_cfg_set(pio, pin & 0xFU, 0U);
+		ae201_sysctl_sl_pio_cfg_set(pio, pin & 0xFU, 0U);
 	} else if (port == AE201_GPIO_PORTD) {
-		ae201_sysctl_pio_cfg_set(5U, pin, 0U);
+		ae201_sysctl_sl_pio_cfg_set(5U, pin, 0U);
 	} else { /* GPIOE：对齐固件 sysctl_iomux_config 的特殊偏移 */
 		if ((pin >= 10U) && (pin <= 13U)) {
-			ae201_sysctl_pio_cfg_set(5U, pin, 0U);
+			ae201_sysctl_sl_pio_cfg_set(5U, pin, 0U);
 		} else if ((pin >= 22U) && (pin <= 23U)) {
-			ae201_sysctl_pio_cfg_set(5U, pin - 8U, 0U);
+			ae201_sysctl_sl_pio_cfg_set(5U, pin - 8U, 0U);
 		} else {
-			ae201_sysctl_pio_cfg_set(5U, 9U, 0U);
+			ae201_sysctl_sl_pio_cfg_set(5U, 9U, 0U);
 		}
 	}
 }
@@ -349,7 +349,7 @@ static int ae201_gpio_init(const struct device *dev)
 	ARG_UNUSED(dev);
 	/* 使能 GPIO 主时钟 + 防抖时钟（对齐固件 GPIO_CLOCK_EN / GPIODB_CLOCK_EN）。
 	 * 幂等，多实例重复调用无害。 */
-	ae201_sysctl_clock_enable(AE201_SYSCTL_MODEN0_GPIO_EN,
+	ae201_sysctl_sl_clock_enable(AE201_SYSCTL_MODEN0_GPIO_EN,
 				  AE201_SYSCTL_MODEN1_GPIODB_EN);
 	return 0;
 }

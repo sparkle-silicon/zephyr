@@ -19,7 +19,7 @@
  *   3. 推送  ae201_clock_change_register()/unregister() + div_set() 触发：
  *      分频改写后通知订阅该域的模块重算（逐时钟域事件）
  *
- * ⚠️ 与 sysctl 的边界：sysctl.c 是「纯 MMIO、无全局变量、无 LOG」的早期
+ * ⚠️ 与 SYSCTL 驱动的边界：sl 层是「纯 MMIO、无全局变量、无 LOG」的早期
  *   路径安全模块（wdt.c 的 _WdogInit 在 BSS 清零前经 clock_div_get 间接调用）。
  *   而通知表是全局状态（BSS 段），故通知机制落在本独立模块。freq_get()
  *   只读寄存器 + 宏计算（零全局符号），保持早期路径安全；通知表仅在
@@ -107,7 +107,7 @@ uint8_t ae201_clock_div_clamp(int32_t div);
  * @brief 写某时钟域分频值，并通知该域订阅者（逐时钟域事件）。
  *
  * 这是分频的唯一写入口 —— 低功耗 / SPIF 降频流程都走这里，保证通知不漏。
- * 内部调 ae201_sysctl_clock_div_set() 写寄存器，随后遍历该域订阅者回调，
+ * 内部调 ae201_sysctl_sl_clock_div_set() 写寄存器，随后遍历该域订阅者回调，
  * 传入变更后的频率。
  *
  * @param domain 时钟域。
