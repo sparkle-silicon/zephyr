@@ -85,13 +85,19 @@ config AE201_CLOCK_MAX_HZ
 	default 80000000 if AE201_SKU_E
 
 config WDOG_INIT
-	bool "AE201 early watchdog init (before C domain)"
-	default n
+	bool
+	default AE201_WDT_INIT
 	help
-	  Call _WdogInit() from arch reset.S before z_prep_c — i.e. before BSS
-	  is zeroed and .data is copied into RAM. 用于在启动最早阶段喂狗/禁狗，
-	  防止 z_prep_c 之前看门狗超时复位。由 reset.S 的 #ifdef CONFIG_WDOG_INIT
-	  / call _WdogInit 调用点接入。
+	  arch 层判据：reset.S 的 #ifdef CONFIG_WDOG_INIT / call _WdogInit。
+
+	  **本符号无 prompt，不要直接配置。** 用户请改
+	  configs/spksilicon/spk32ae/ae201/Kconfig 的 AE201_WDT_INIT
+	  （语义：启动最早期、BSS 清零前是否装狗），本符号由它派生。
+	  y 时 zephyr_fork 的 sl/ae201_wdt_sl.c 生成 _WdogInit；
+	  n 时该函数不编译，启动期无看门狗，标准驱动照常初始化。
+
+	  若应用层 Kconfig 未定义 AE201_WDT_INIT（非本仓库的构建），
+	  本符号取 n，行为与迁移前一致。
 
 	  ⚠️ 寄存器操作待芯片资料确认（WDT 中断号 = 19，SYSCTL@0x30400 为复位域）。
 

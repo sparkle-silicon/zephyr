@@ -21,6 +21,9 @@ LOG_MODULE_REGISTER(ae201_clock, LOG_LEVEL_WRN);
 
 #include "clock.h"
 #include "ae201_sysctl_sl.h"
+#if defined(CONFIG_SYS_CLOCK_EXISTS)
+#include "ae201_systimer.h" /* 运行期主频 → cycle 域频率同步 */
+#endif
 
 /* ================= 主频初始化 ======================================= */
 void ae201_clock_init(void)
@@ -35,11 +38,20 @@ void ae201_clock_init(void)
 	uint8_t div = ae201_clock_div_clamp((int32_t)(AE201_CLOCK_SRC_HZ / hz - 1U));
 
 	ae201_sysctl_sl_clock_div_set(AE201_SYSCTL_CLKDIV_OSC80M_OFFSET, div);
+
+	/*
+	 * 内核侧 cycle 域频率的同步点不在这里，而在 ae201_clock_div_set()：
+	 * 本函数只在 PRE_KERNEL_1 把 CLKDIV 写成 dts 推导值，此时内核的
+	 * z_clock_hw_cycles_per_sec 已经由 kernel/timeout.c 以
+	 * CONFIG_SYS_CLOCK_HW_CYCLES_PER_SEC（同源于 dts）初始化过，无需再写。
+	 * 运行期改主频的那条路径见 ae201_clock_div_set() 末尾。
+	 */
 }
 
 #ifndef CONFIG_WDOG_INIT
-/* WDT init 段未开 → 主频没有 reset.S 的 _WdogInit 可挂（ae201_wdt_init.c 受
- * CONFIG_WDOG_INIT 编译控制，整文件不编），改在早期 SYS_INIT 补配。须早于 UART driver
+/* WDT init 段未开 → 主频没有 reset.S 的 _WdogInit 可挂（sl/ae201_wdt_sl.c
+ * 内 _WdogInit 由 CONFIG_WDOG_INIT 做函数级条件编译，不开则该符号不存在），
+ * 改在早期 SYS_INIT 补配。须早于 UART driver
  * （PRE_KERNEL_1 / CONFIG_SERIAL_INIT_PRIORITY=50），否则 UART 按错误的 80M
  * 算波特率。level=PRE_KERNEL_1 + CONFIG_KERNEL_INIT_PRIORITY_DEFAULT(40)
  * 保证先跑（40 < 50）。 */
@@ -193,6 +205,23 @@ int ae201_clock_div_set(enum ae201_clock_domain domain, uint8_t div)
 	}
 
 	ae201_sysctl_sl_clock_div_set(domain_clkdiv_offset(domain), div);
+
+	/*
+	 * 主频变化 → mcycle 的计数频率随之变化（cycle 源走 mcycle）。
+	 * 内核在 CONFIG_TIMER_READS_ITS_FREQUENCY_AT_RUNTIME=y 时，
+	 * sys_clock_hw_cycles_per_sec() 读的是变量 z_clock_hw_cycles_per_sec，
+	 * 由 systimer 侧更新；未开该配置时本调用为空操作。
+	 * 必须早于 clock_notify —— 订阅者回调里可能立刻调用 k_busy_wait 等
+	 * 依赖该频率的内核 API。
+	 */
+#if defined(CONFIG_SYS_CLOCK_EXISTS)
+	if (domain == AE201_CLOCK_DOMAIN_OSC80M)
+	{
+		ae201_systimer_cycles_per_sec_update(
+			ae201_clock_freq_get(AE201_CLOCK_DOMAIN_OSC80M));
+	}
+#endif
+
 	clock_notify(domain);
 
 	return 0;

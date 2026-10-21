@@ -21,31 +21,18 @@ void sys_arch_reboot(int type)
 
 
 /*
- * 无 systimer 平台的 k_uptime_ticks 兜底（AE201 专用，见 BUILD.md 7.15）
+ * 无 systimer 平台的历史兜底已移除（2026-10-19）。
  *
- * 背景：kernel/CMakeLists.txt:109 用
- *         target_sources_ifdef(CONFIG_SYS_CLOCK_EXISTS kernel PRIVATE timeout.c timer.c)
- *       把整个 kernel/timeout.c 排除在编译之外；AE201 为 CONFIG_SYS_CLOCK_EXISTS=n，
- *       故 z_impl_k_uptime_ticks / sys_clock_tick_get 全族缺失。
+ * 曾经这里提供 __weak sys_clock_cycle_get_32() 与 z_impl_k_uptime_ticks()，
+ * 目的只是让 CONFIG_SYS_CLOCK_EXISTS=n 时的日志子系统能链接（当时还没有
+ * systimer，k_uptime 无真实时间基准）。systimer 落地后两个符号都有正式实现：
  *
- * 触发：上游 subsys/logging/log_core.c 的 log_core_init() 用「运行时」判断选时间戳
- *       函数，两个分支都要编进目标文件：
- *         if (sys_clock_hw_cycles_per_sec() > 1000000)
- *                 log_set_timestamp_func(default_lf_get_timestamp, 1000U);
- *       AE201 为 20MHz > 1MHz，该分支存活 → default_lf_get_timestamp() →
- *       k_uptime_get_32() → k_uptime_ticks()，链接期 undefined reference。
- *       上游默认「所有平台都有 systimer」，无 tick 平台属边缘路径。
+ *   sys_clock_cycle_get_32()  → 父仓库 drivers/ae201_systimer.c（mcycle）
+ *   z_impl_k_uptime_ticks()   → kernel/timeout.c（sys_clock_announce 累加）
  *
- * 语义：无 tick 平台本就没有 uptime 概念，返回 0 而非伪造时间——日志时间戳恒 0
- *       是「无时间基准」的诚实反映。systimer 落地后 CONFIG_SYS_CLOCK_EXISTS=y，
- *       本实现被预处理器剔除，由 kernel/timeout.c 接管，无重复定义风险。
+ * ⚠️ 原实现是 __weak：留着不会报重复符号，但会**遮蔽**真实实现 ——
+ *    必须整块删除，而不是仅在开启开关时关掉。
  */
-#if !defined(CONFIG_SYS_CLOCK_EXISTS)
-int64_t z_impl_k_uptime_ticks(void)
-{
-	return 0;
-}
-#endif
 #if defined(CONFIG_RISCV_SOC_INTERRUPT_INIT)
 #define AE201_INTC0_BASE_ADDR        0x1000UL
 #define AE201_INTC1_BASE_ADDR        0x1400UL
