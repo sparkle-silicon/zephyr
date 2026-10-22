@@ -17,7 +17,19 @@ config SYS_CLOCK_HW_CYCLES_PER_SEC
 config RISCV_GP
 	default y
 
-# INTC0 (64 sources) + INTC1 (40 sources).
+# NUM_IRQS = _sw_isr_table[] 的项数 = Zephyr 眼中的「中断号」上限。
+#
+# ⚠️ 104 是按「INTC0 源数 + INTC1 源数」推导的历史值，与手册不一致：
+#    手册 v0.5.9 表 13-1 中 INTC0 是 59 源（GPIOA[31:0] + GPIOB[26:0]），
+#    INTC1 声明 60 源但只列出 54 个（差额见 include/reg/ae201_intr_reg.h
+#    的保留段）。更重要的事实是：**二级源根本不占 Zephyr 的中断号** ——
+#    它们由 INTC 自己的分派器处理（src/platform/ae201_intr_dispatch.c），
+#    Zephyr 只认识 INTC0 / INTC1 这两个 IRQC 位（30 / 31）。
+#
+#    故 IRQC 的编号空间实为 32（ID 0..31），104 让表偏大（832B vs 256B
+#    的 .bss）但不影响功能：32..103 号永不使用。
+#    改小属内存优化，需复核 arch_irq_enable() 的 `1 << irq` 与所有
+#    IRQ_CONNECT 的编号，留待单独一次改动，不在模块落地时一并动。
 config NUM_IRQS
 	default 104
 

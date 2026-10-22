@@ -27,7 +27,7 @@ void sys_arch_reboot(int type)
  * 目的只是让 CONFIG_SYS_CLOCK_EXISTS=n 时的日志子系统能链接（当时还没有
  * systimer，k_uptime 无真实时间基准）。systimer 落地后两个符号都有正式实现：
  *
- *   sys_clock_cycle_get_32()  → 父仓库 drivers/ae201_systimer.c（mcycle）
+ *   sys_clock_cycle_get_32()  → 父仓库 platform/ae201_systimer.c（mcycle）
  *   z_impl_k_uptime_ticks()   → kernel/timeout.c（sys_clock_announce 累加）
  *
  * ⚠️ 原实现是 __weak：留着不会报重复符号，但会**遮蔽**真实实现 ——
