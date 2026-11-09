@@ -21,6 +21,9 @@ LOG_MODULE_REGISTER(ae201_clock, LOG_LEVEL_WRN);
 
 #include "clock.h"
 #include "ae201_sysctl_sl.h"
+#if defined(CONFIG_AE201_TRIM)
+#include "ae201_trim.h" /* 内部组件：eFuse → OSC_TRIM / PMUCSR，客户不交付源码 */
+#endif
 #if defined(CONFIG_SYS_CLOCK_EXISTS)
 #include "ae201_systimer.h" /* 运行期主频 → cycle 域频率同步 */
 #endif
@@ -28,6 +31,12 @@ LOG_MODULE_REGISTER(ae201_clock, LOG_LEVEL_WRN);
 /* ================= 主频初始化 ======================================= */
 void ae201_clock_init(void)
 {
+#if defined(CONFIG_AE201_TRIM)
+	/* trim 必须先于分频：OSC80M 未标定时，按错误频率算出的 div 也是错的。
+	 * eFuse 有效则硬件已自动加载，本调用不改寄存器；无有效值才写默认常量。
+	 * 无返回值 —— eFuse 读取是纯 MMIO，空片已在组件内部降级到默认常量。 */
+	ae201_trim_apply();
+#endif
 	/* 主频目标 Hz 单一事实源 = dts cpu0 clock-frequency（ae201.dts）。
 	 * CLKDIV_OSC80M 是寄存器值，主频 = 80M / (div + 1)，故
 	 * div = 80M / hz - 1（= FlashInfo.MainFrequency - 1）。早期（BSS 前）
