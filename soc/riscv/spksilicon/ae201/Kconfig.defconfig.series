@@ -3,16 +3,33 @@
 
 if SOC_SERIES_SPK32AE201X
 
+config SOC
+	default "spk32ae201"
+
 config SOC_SERIES
 	default "ae201"
+
+# config KERNEL_ENTRY
+#	default "__nuclei_start"
 
 # EC core clock 的 Hz 单一事实源 = dts 的 cpu0 clock-frequency（ae201.dts）。
 # 主频 = 80M / FlashInfo.MainFrequency（分频数 div），div 由 clock-frequency 反推
 # （见 ecfw-zephyr/misc/flash_info.h 的 FLASH_INFO_MAIN_FREQ_DEFAULT）。BootROM 按
 # FlashInfo 配好 CLKDIV_OSC80M（硬件限制时 clamp，如 AE201N 型号最高 40M）。
 # 改主频只改 dts 的 clock-frequency 一处（对齐 neorv32/niosv 的 dt_node_int_prop_int）。
+# config SYS_CLOCK_HW_CYCLES_PER_SEC
+#	# This value should be the CPU frequency divided by 4.
+#	# The CPU frequency is set to the maximum value of 108MHz by default.
+#	default 20000000
+
 config SYS_CLOCK_HW_CYCLES_PER_SEC
 	default $(dt_node_int_prop_int,/cpus/cpu@0,clock-frequency)
+
+config RISCV_MCAUSE_EXCEPTION_MASK
+	default 0xFFF
+
+config RISCV_SOC_INTERRUPT_INIT
+	default y
 
 config RISCV_GP
 	default y
@@ -31,15 +48,28 @@ config RISCV_GP
 #    改小属内存优化，需复核 arch_irq_enable() 的 `1 << irq` 与所有
 #    IRQ_CONNECT 的编号，留待单独一次改动，不在模块落地时一并动。
 config NUM_IRQS
-	default 104
+	# default 104 
+	default 32 
+
+# config 2ND_LEVEL_INTERRUPTS
+	# default y
+
+# config PINCTRL
+	# default y
+
+# config RESET
+	#default y
+
+# config CLOCK_CONTROL
+	# default y
+
+config RISCV_TRAP_HANDLER_ALIGNMENT
+	default 4
 
 # AE201X 系列为单核 N100（mhartid 恒 0，仅单 Hart 集成），MP_MAX_NUM_CPUS
 # 恒定为 1。在此 SoC/series 层固定默认值，客户在 board/应用层无需配置。
 # （如需彻底锁定禁止改大，可追加 range 1 1；当前仅设 default，保留灵活性。）
 config MP_MAX_NUM_CPUS
 	default 1
-
-config RISCV_SOC_INTERRUPT_INIT
-	default y
 
 endif # SOC_SERIES_SPK32AE201X
